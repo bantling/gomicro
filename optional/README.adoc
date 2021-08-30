@@ -1,0 +1,51 @@
+// SPDX-License-Identifier: Apache-2.0
+:doctype: article
+
+= gooptional
+
+Implementation of optional similar to Java.
+
+== Main differences from Java
+
+- Single constructor for both initial cases of empty and with a value
+- Comparisons made by Filter, where gofuncs provides conjunction, disjunction, negation, and equality.
+- Implements goiter.Iterable, provides an iterator of zero or one elements
+- Since goiter.Iter has specialization methods such as IntValue and NextIntValue, there is no need for specialized classes like Java OptionalInt
+- Implements database/sql/driver Scanner and Valuer interfaces for compatibility with values read from/written to a column
+- Implements Stringer to return "Optional" or fmt.Sprintf("Optional (%v)", value)
+
+== Constructors
+
+Of(...interface{}) returns an empty Optional if no args are passed or nil is passed, or a present Optional with the first arg passed.
+
+== Getters
+
+* Get() method returns (val, bool) where val is valid only if bool is true
+* MustGet() method returns val, and panics if empty
+* OrElse(defaultVal) returns val if present, else the given default value
+* OrElseGet(supplier func() any) returns val if present, else the result of the given supplier
+* OrElsePanic(msg func() string) returns val if present, else panics with the result of the given func
+* IsEmpty() returns true if empty
+* IsPresent() returns true is present
+* IfEmpty(func()) executes the given func if empty
+* IfPresent(consumer func(val)) executes the given consumer with the value if present
+* IfPresentOrElse(consumer func(val), empty func()) executes the given consumer with the value present, else executes the empty func
+
+== Transforms
+
+* Iter() return a *goIter.Iter of one element if present, else an empty Iter
+* Filter(func(any) bool) returns this Optional if present and the predicate returns true for the value, else an empty Optional
+* Map(func(any) any, zeroValIsPresent = ZeroValueIsPresent) calls the map func if present and returns an Optional of the new value, else returns an empty Optional.
+  If the mapping func returns a zero value then if zeroValIsPresent == ZeroValueIsPresent, an Optional of the zero value is returned, else an empty Optional is returned.
+* FlatMap(func(any) Optional), calls the map func if present and returns the resulting Optional, else returns an empty Optional.
+
+== Database
+
+* Scan(any) is the database/sql Scanner interface and overwrites the value in the Optional.
+  This is the only method that modifies an Optional.
+* Value() (driver.Value, error) is the database/sql/driver/Valuer interface that writes a value into a column.
+  returns (value, nil) if present, else (nil, nil)
+
+== Other
+
+* String() string is the fmt.Stringer interface, returning "Optional" if empty, else fmt.Sprintf("Optional (%v)", value).

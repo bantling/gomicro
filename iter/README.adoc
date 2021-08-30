@@ -1,0 +1,167 @@
+// SPDX-License-Identifier: Apache-2.0
+:doctype: article
+
+= goiter
+
+Implementation of iterator pattern based on an iterating function -
+a function that accepts no arguments and returns (next item, true if next item exists).
+
+When the bool result is false, the next item result is invalid in the sense it must be ignored for correct iteration.
+These functions may be designed so that once exhausted, they continue to return (invalid value, false).
+
+== Iterating functions
+
+* ArraySliceIterFunc: iterates any type of array or slice non-recursively. Panics if value passed does not wrap an array or slice
+* MapIterFunc: iterates any kind of map non-recursively, where next item is a KeyValue{Key interface{}, Value interface{}} instance. Panics if value passed does not wrap a map
+* NoValueIterFunc: iterates nothing, always returns (nil, false)
+* SingleValueIterFunc: iterates a single value, where first call to next returns (value, true), further calls return (nil, false). Array/slice/map values are just returned as one value
+* ElementsIterFunc: iterates the elements of a value, using each of the above funcs as appropriate
+* ReaderIterFunc: iterates the bytes of an io.Reader
+* ReaderToRunesIterFunc: iterates the bytes of an io.Reader, converting them to UTF-8 runes
+* ReaderToLinesIterFunc: iterates the bytes of an io.Reader, converting them to lines of UTF-8 runes
+
+== Helper functions
+
+* FlattenArraySlice flattens a multi-dimensional array or slice into a one dimenional []interface{}
+* FlattenArraySliceAsType is the same as FlattenArraySlice, except it converts to the same type as the type of the value provided 
+
+== Iter struct
+
+The Iter struct uses an iterating function to implement the iterator pattern in an idiomatic Go fashion, with some extra utility methods:
+
+* Next is used to advance the iterator
+** returns true if there is another item
+** if true, further calls to Next return true without advancing
+** returns false if the iterating function has been exhausted
+** once exhausted, further calls to Next return false
+* Value returns the value iterated by last call to Next
+** panics if called after Next has exhausted the iterating function
+** panics if Next has not been called since last call to Value
+** when a value is returned, causes the next call to Next to advance
+* ValueOfType is the same as Value, except it converts to the same type as the type of the argument provided
+* NextValue returns the next value for cases where you know another value exists
+* NextValueOfType is the same as NextValue, except it converts to the same type as the type of the argument provided
+* BoolValue, Int*Value, Uint*Value, Float*Value, Complex*Value, and StringValue are the same as Value, except they convert to a specific type
+* NextBoolValue, NextInt*Value, NextUint*Value, NextFloat*Value, NextComplex*Value, and NextStringValue are the same as NextValue, except they convert to a specific type
+* SplitIntoRows splits the items into slices of at most n columns
+** panics if n == 0
+** panics if called after Next has exhausted the iterating function
+** returns a two dimensional slice of slices
+** if the iter is empty, returns an allocated empty slice of slices
+* SplitIntoRowsOf is the same as SplitIntoRows, except it returns a typed slice 
+* SplitIntoColumns splits the items into slices of at most n rows
+** panics if n == 0
+** panics if called after Next has exhausted the iterating function
+** returns a two dimensional slice of slices
+** if the iter is empty, returns an allocated empty slice of slices
+* SplitIntoColumnsOf is the same as SplitIntoColumns, except it returns a typed slice
+* ToSlice collects all the items into a single slice
+** panics if called after Next has exhausted the iterating function
+** if the iter is empty, returns an allocated empty slice
+* ToSliceOf is the same as ToSlice, except it returns a typed slice
+
+== Constructors
+
+* NewIter accepts an iterating function
+* Of accepts a vararg of interface{} which is iterated using an ArraySliceIterFunc
+* OfFlatten accepts an array or slice which is flattened into one dimension via FlattenArraySlice and iterated using an ArraySliceIterFunc
+* OfElements accepts a single item which is iterated using an ElementsIterFunc
+* OfReader accepts an io.Reader which is iterated using ReaderIterFunc
+* OfReaderRunes accepts an io.Reader which is iterated using ReaderToRunesIterFunc
+* OfReaderLines accepts an io.Reader which is iterated using ReaderToLinesIterFunc
+* Concat accepts a vararg of Iter which are concatenated into a single new Iter
+
+Since an *Iter is an Iterable, both OfElements and OfIterables can iterate the values of an *Iter,
+the difference being that OfElements will only iterate one,
+while OfIterables iterates any number of them.
+
+== Examples (taken from unit tests)
+
+=== Of constructor
+....
+    iter = Of(5, []int{6, 7})
+
+    next = iter.Next()
+    assert.True(t, next)
+    assert.Equal(t, 5, iter.Value())
+
+    next = iter.Next()
+    assert.True(t, next)
+    assert.Equal(t, []int{6, 7}, iter.Value())
+
+    next = iter.Next()
+    assert.False(t, next)
+
+    func() {
+        defer func() {
+            assert.Equal(t, "Iter.Next called on exhausted iterator", recover())
+        }()
+
+        iter.Next()
+        assert.Fail(t, "Must panic")
+    }()
+....
+
+=== OfFlatten constructor
+....
+    iter := OfFlatten([]interface{}{1, [2]int{2, 3}, [][]string{{"4", "5"}, {"6", "7", "8"}}})
+    assert.Equal(t, 1, iter.NextValue())
+    assert.Equal(t, 2, iter.NextValue())
+    assert.Equal(t, 3, iter.NextValue())
+    assert.Equal(t, "4", iter.NextValue())
+    assert.Equal(t, "5", iter.NextValue())
+    assert.Equal(t, "6", iter.NextValue())
+    assert.Equal(t, "7", iter.NextValue())
+    assert.Equal(t, "8", iter.NextValue())
+    assert.False(t, iter.Next())
+....
+
+=== OfElements constructor
+....
+    iter := OfElements([]int{5, 6})
+
+    next := iter.Next()
+    assert.True(t, next)
+    assert.Equal(t, 5, iter.Value())
+
+    next = iter.Next()
+    assert.True(t, next)
+    assert.Equal(t, 6, iter.Value())
+
+    next = iter.Next()
+    assert.False(t, next)
+
+    func() {
+        defer func() {
+            assert.Equal(t, "Iter.Next called on exhausted iterator", recover())
+        }()
+
+        iter.Next()
+        assert.Fail(t, "Must panic")
+    }()
+....
+
+=== For loop
+....
+    var (
+        iter     = Of(5, []int{6, 7})
+        idx      = 0
+        expected = []interface{}{5, []int{6, 7}}
+    )
+
+    for iter.Next() {
+        assert.Equal(t, expected[idx], iter.Value())
+        idx++
+    }
+
+    assert.Equal(t, 2, idx)
+
+    func() {
+        defer func() {
+            assert.Equal(t, "Iter.Next called on exhausted iterator", recover())
+        }()
+
+        iter.Next()
+        assert.Fail(t, "Must panic")
+    }()
+....

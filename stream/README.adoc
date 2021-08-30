@@ -1,0 +1,59 @@
+// SPDX-License-Identifier: Apache-2.0
+:doctype: article
+
+= Streams
+
+A http://golang.org/[Go] version of Java streams, with some signficant differences:
+
+* Stream only handles stateless single element concerns (eg, mapping and filtering elements)
+* Calling Stream.AndThen returns a Finisher, which handles stateful and/or multi element concerns (eg distinct and sort)
+* Calling Finisher.AndThen returns a Stream, to allow for further stateless transforms
+* Finisher has all terminal methods, including collecting results into a slice or map
+** Each terminal method has an argument list that ends with a source of data expressed as a *goiter.Iter and an optional ParallelConfig
+** If the ParallelConfig is provided, then source elements are processed in parallel, else they are processed serially
+* Single algorithm:
+** Only the Stream transforms are processed in paralell, Finisher transforms are always done serially
+** Parallel processing splits up source elements into a two dimensional slice, where each slice is handled by a separate go routine.
+** After all go routines complete, the slice is flattened into a one dimensional slice.
+** The Finisher transforms are then applied serially to the one dimensional slice
+** The ParallelConfig allows control over how many go routines execute, or how many items each go routine processes
+** If parallel processing is not used, then the Stream and Finisher transforms are applied to the source serially.
+* Simple code base using function composition
+** Stream transforms are based on composing stateless functions that accept and return a *goiter.Iter
+** Finisher transforms are based on composing stateful functions that accept no args and generate functions that accept and return a *goiter.Iter
+** Stream.Transform accepts a stateless function and composes it with the existing composed transform.
+   This method is the basis of all provided Stream transforms.
+   This method may also be used to create custom transforms that are unlike any provided.
+** Similarly, Finisher.Transform accepts a stateful function generator and composes it with the existing composed transform
+* Uses generic programming via *goiter.Iter ability to convert elements to desired types
+* Has some additional operations:
+** Stream.FilterNot filters elements that do not pass a filter function
+** Finisher.Duplicate returns only elements that appear at least twice
+** Finisher.FilterNot is the same a stateful version of Stream.FilterNot
+** Finisher.ReverseSort sorts items in reverse order
+** Finisher.SetReduce reduces a set of items into one or more smaller sets of items, which may be of a different type
+** Finisher.GroupBy arranges source elements into a map where each key contains a slice of values
+** Finisher.ToMap arranges source elements into a map where each key contains a single value 
+** Finisher.ToByteWriter and ToRuneWriter write the resulting elements into a Writer
+* Finisher is reusable:
+** Since the data source is supplied to the terminal methods, the same Finisher can be reused with many data sets
+** The same Finisher can be used by many go routines to process different data sets in parallel 
+
+Example code:
+
+....
+// Filter using a func with type interface{}, requires type assertions, get an []interface{} as result
+fn := func(element interface{}) bool { return element.(int) < 3 }    
+f := New().Filter(fn).AndThen()
+assert.Equal(t, []interface{}{1, 2}, f.ToSlice(goiter.Of(1, 2, 3)))
+
+// Filter using a func with type int, get a []int as result
+fn := gofuncs.Filter(func(element int) bool { return element < 3 })
+f := New().Filter(fn).AndThen()
+assert.Equal(t, []int{1, 2}, f.ToSliceOf(0, goiter.Of(1, 2, 3)))
+
+// Filter and Sort
+fn := gofuncs.Filter(func(element int) bool { return element < 3 })
+f := New().Filter(fn).AndThen().Sort(gofuncs.IntSortFunc)
+assert.Equal(t, []int{0, 1, 2}, f.ToSliceOf(0), goiter.Of(2, 1, 3, 0))
+....

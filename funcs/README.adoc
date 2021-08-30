@@ -1,0 +1,208 @@
+// SPDX-License-Identifier: Apache-2.0
+:doctype: article
+
+= gofuncs
+
+A set of common functions that can be used on multiple projects.
+
+== Function adapters
+
+These functions use type assertion and reflection to accept an empty interface argument and return a specific function signature.
+Each adapter first tries to type assert that the argument is the exact function signature desired, and if so, returns the argument as is.
+Otherwise, the adapter uses reflection to verify the argument is the correct kind of function and adapt it.
+Adapters panic if the function argument does not match expectations. 
+
+* IndexOf(array or slice, index, optional default) safely looks up an index into an array or slice, returning the zero value or default value if there are not enough elements for the index
+* ValueOfKey(map, key, optional default) looks up a key in a map, returning the zero value or default given if the key does not exist
+* Filter(func) adapts a func(any) bool into a func(interface{}) bool
+* FilterAll adapts a vararg of func(any) bool into a []func(interface{}) bool
+* And and Or use FilterAll to create conjunction and disjunctions as a func(interface{}) bool
+* Not adapts a func(any) bool into a negation func(interface{}) bool
+* EqualTo accepts a value and returns a func(interface{}) bool that returns true if the func arg is equal to the value using ==
+* DeepEqualTo accepts a value and returns a func(interface{}) bool that returns true if the func arg is equal to the value using reflect.DeepEqual
+* IsLessableKind returns true if the given reflect.Kind is any type that compared using the < operator
+* LessThan accepts a value and returns a func(val1, val2 interface{}) bool that returns true if val1 < val2
+* IsLessThan accepts a value and returns a func(interface{}} bool that returns true if the func arg < the value
+* LessThanEquals accepts a value and returns a func(val1, val2 interface{}) bool that returns true if val1 <= val2
+* IsLessThanEquals accepts a value and returns a func(val1, val2 interface{}) bool that returns true if val1 <= val2
+* GreaterThan accepts a value and returns a func(val1, val2 interface{}) bool that returns true if val1 > val2
+* IsGreaterThan accepts a value and returns a func(interface{}) bool that returns true if the func arg > the value
+* GreaterThanEquals accepts a value and returns a func(val1, val2 interface{}) bool that returns true if val1 >= val2
+* IsGreaterThanEquals accepts a value and returns a func(interface{}) bool that returns true if the func arg >= the value
+* IsNegative accepts a value and returns true if it is negative
+* IsNonNegative accepts a value and returns true if it is non-negative
+* IsPositive accepts a value and returns true if it is positive
+* IsNil is a func(interface{}) bool that returns true if the arg is nil
+* IsNilable is a func(interface{}) bool that returns true if the type of the value given is a nilable type 
+* Map(func) adapts a func(any) any into a func(interface{}) interface{}
+* MapTo(func, X) adapts a func(any) X' into a func(interface{}) X where X' is convertible to X
+* ConvertTo(val) returns a func(interface{}) interface{} that converts the argument to the type of the value passed
+* Supplier(func) adapts a func() any into a func() interface{}
+* SupplierOf(func, X) adapts a func() X' into a func() X where X' is convertible to X.
+* Consumer(func) adapts a func(any) into a func(interface{})
+* Ternary(bool, trueVal, falseVal) returns trueVal is the bool is true, else falseVal
+* PanicE(error) panics if the error is non-nil with the wrapped message
+* PanicVE(val, error) panics if the error is non-nil with the wrapped message, else returns val
+* PanicBM(bool, msg) panics if the bool is false with msg
+* PanicVBM(val, bool, msg) panics if the bool is false with msg, else returns val
+* SortFunc(func(val21, val2) bool) adapts a func that returns true if val1 < val2 and adapts it to a func(interface{}, interface{}) bool
+* IntSortFunc returns true if val1.(int) < val2.(int)
+* UintSortFunc returns true if val1.(uint) < val2.(uint)
+* FloatSortFunc returns true if val1.(float64) < val2.(float64)
+* StringSortFunc returns true if val1.(string) < val2.(string)
+== Examples
+
+=== Filter
+
+....
+var fn func(interface{}) bool = Filter(func(i int) bool { return i < 3 })
+fmt.Println(fn(1), fn(5))
+// true false
+....
+
+=== FilterAll
+
+....
+var filterFn []func(interface{}) bool = FilterAll(
+    func(i interface{}) bool { return i.(int) < 3 },
+    func(i int) bool { return i >= 0 },
+)
+fmt.Println(filterFns[0](1), filterFns[1](int8(-1)))
+// true false
+....
+
+=== And
+
+....
+var filterFn func(interface{}) bool = And(
+    func(i interface{}) bool { return i.(int) < 3 },
+    func(i int) bool { return i >= 0 },
+)
+fmt.Println(filterFn(1), filterFn(-1))
+// true false
+....
+
+=== Or
+
+....
+var filterFn func(interface{}) bool = Or(
+    func(i interface{}) bool { return i.(int) < 3 },
+    func(i int) bool { return i%2 == 0 },
+)
+fmt.Println(filterFn(1), filterFn(5))
+// true false
+....
+
+=== Not
+
+....
+var filterFn func(interface{}) bool = Not(func(i interface{}) bool { return i.(int) < 3 })
+fmt.Println(filterFn(1), filterFn(5))
+// false true
+....
+
+=== EqualTo
+
+....
+var filterFn func(interface{}) bool = EqualTo(1)
+fmt.Println(filterFn(1), filterFn(5))
+// true false
+....
+
+=== IsNil
+
+....
+var filterFn func(interface{}) bool = IsNil
+fmt.Println(filterFn(nil), filterFn(5))
+// true false
+....
+
+=== Map
+
+....
+var fn func(interface{}) interface{} = Map(func(i int) string { return strconv.Itoa(i) })
+fmt.Printf("%q, %q\n", fn(1), fn(5))
+// "1" "5"
+....
+
+=== MapTo
+
+....
+var fn func(interface{}) string = MapTo(func(i int) string { return strconv.Itoa(i) }, "").(func(interface{}) string)
+fmt.Printf("%q, %q\n", fn(1), fn(5))
+// "1" "5"
+....
+
+=== Supplier
+
+....
+var fn func() interface{} = Suppler(func() int { return 5 })
+fmt.Println(fn())
+// 5
+
+var fn func() interface{} = Suppler(func(...int) int { return 6 })
+fmt.Println(fn())
+// 6
+....
+
+=== SupplierOf
+
+....
+var fn func() int = SupplerOf(func() int8 { return 5 }, 0).(func() int)
+fmt.Println(fn())
+// 5
+
+var fn func() int = SupplerOf(func(...int8) int8 { return 6 }, 0).(func() int)
+fmt.Println(fn())
+// 6
+....
+
+=== Consumer
+
+....
+var fn func(interface{}) = Consumer(func(i int) { fmt.Println(i) })
+fn(5)
+// 5
+....
+
+=== Ternary
+
+....
+str := "abc"
+i := Ternary(str == "abc", 1, 2)
+// i = 1
+
+i = Ternary(str == "def", 1, 2)
+// i = 2
+....
+
+=== Panic
+
+....
+var str string
+PanicE(json.Unmarshal([]byte(`"abc"`), &str))
+// str = abc
+
+PanicE(json.Unmarshal([]byte("{"), &str))
+// panics with `unexpected end of JSON input`
+
+i := PanicVE(strconv.Atoi("1")).(int)
+// i = 1
+
+PanicVE(strconv.Atoi("a"))
+// panics with `strconv.Atoi: parsing "a": invalid syntax`
+
+PanicBM(big.NewRat(2, 1).IsInt(), "must be int")
+// no panic
+
+PanicBM(big.NewRat(2, 3).IsInt(), "must be int")
+// panics with `must be an int`
+
+f, ok := big.NewFloat(1.0).SetString("2")
+PanicVBM(f, ok, "must be float64")
+// f = *Float(2)
+
+f, ok = big.NewFloat(1.0).SetString("a")
+PanicVBM(f, ok, "must be float64")
+// panics with `must be float64`
+....
