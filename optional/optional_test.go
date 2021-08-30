@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/bantling/gomicro/iter"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -113,18 +112,16 @@ func TestOptionalFilter(t *testing.T) {
 
 func TestOptionalIter(t *testing.T) {
 	var (
-		opt      Optional        = Of(1)
-		iterable goiter.Iterable = opt
-		iter                     = iterable.Iter()
+		opt Optional = Of(1)
+		it           = opt.Iter()
 	)
-	assert.True(t, iter.Next())
-	assert.Equal(t, 1, iter.Value())
-	assert.False(t, iter.Next())
+	assert.True(t, it.Next())
+	assert.Equal(t, 1, it.Value())
+	assert.False(t, it.Next())
 
 	opt = Of()
-	iterable = opt
-	iter = iterable.Iter()
-	assert.False(t, iter.Next())
+	it = opt.Iter()
+	assert.False(t, it.Next())
 }
 
 func TestOptionalMap(t *testing.T) {

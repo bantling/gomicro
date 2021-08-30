@@ -8,7 +8,7 @@ import (
 	"reflect"
 
 	"github.com/bantling/gomicro/funcs"
-	"github.com/bantling/gomicro/iter"
+	iter "github.com/bantling/gomicro/iter"
 )
 
 // ZeroValueIsPresentFlags is a pair of flags indicating whether or not a zero value should be considered present
@@ -106,8 +106,8 @@ func (o Optional) IfPresentOrElse(consumer interface{}, f func()) {
 
 // Iter returns an *Iter of one element containing the wrapped value if present, else an empty Iter.
 // See Iter for typed methods that return builtin types.
-func (o Optional) Iter() *goiter.Iter {
-	return gofuncs.Ternary(o.present, goiter.Of(o.value), goiter.Of()).(*goiter.Iter)
+func (o Optional) Iter() *iter.Iter {
+	return gofuncs.Ternary(o.present, iter.Of(o.value), iter.Of()).(*iter.Iter)
 }
 
 // Filter applies the predicate to the value of this Optional.
