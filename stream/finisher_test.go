@@ -15,50 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==== Functions
-
-func TestComposeGenerators(t *testing.T) {
-	var (
-		f1 = func() func(it *iter.Iter) *iter.Iter {
-			return func(it *iter.Iter) *iter.Iter {
-				return iter.NewIter(
-					func() (interface{}, bool) {
-						for it.Next() {
-							if val := it.Value(); val.(int) < 5 {
-								return val, true
-							}
-						}
-
-						return nil, false
-					},
-				)
-			}
-		}
-
-		f2 = func() func(it *iter.Iter) *iter.Iter {
-			return func(it *iter.Iter) *iter.Iter {
-				return iter.NewIter(
-					func() (interface{}, bool) {
-						for it.Next() {
-							if val := it.Value(); val.(int) > 0 {
-								return val, true
-							}
-						}
-
-						return nil, false
-					},
-				)
-			}
-		}
-
-		c  = composeGenerators(f1, f2)
-		it = iter.Of(0, 1, 2, 3, 4, 5)
-	)
-
-	assert.Equal(t, []int{1, 2, 3, 4}, c()(it).ToSliceOf(0))
-}
-
-// ==== Finisher Transforms
+// ==== Transforms
 
 func TestFinisherTransform(t *testing.T) {
 	f := New().AndThen().Transform(func() func(*iter.Iter) *iter.Iter {
@@ -259,9 +216,7 @@ func TestFinisherSort(t *testing.T) {
 	assert.Equal(t, []interface{}{1, 2, 3}, f.Iter(iter.Of(2, 3, 1)).ToSlice())
 }
 
-//
-// ==== Finisher Terminals
-//
+// ==== Terminals
 
 func TestFinisherIter(t *testing.T) {
 	f := New().AndThen()
@@ -532,9 +487,7 @@ func TestToRuneWriter(t *testing.T) {
 	assert.Equal(t, []byte(string("àḁ𝆑")), buf.Bytes())
 }
 
-//
-// ==== Finisher Continuation
-//
+// ==== Continuation
 
 func TestFinisherStream(t *testing.T) {
 	s := New().AndThen().AndThen()

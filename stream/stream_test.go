@@ -231,7 +231,7 @@ func TestIterate(t *testing.T) {
 	assert.Equal(t, 8, iter.NextIntValue())
 }
 
-// ==== Stream Constructors
+// ==== Constructors
 
 func TestStreamZeroValue(t *testing.T) {
 	s := &Stream{}
@@ -243,7 +243,7 @@ func TestStreamNew(t *testing.T) {
 	assert.Equal(t, []interface{}{1, 2, 3}, s.Iter(iter.Of(1, 2, 3)).ToSlice())
 }
 
-// ==== Stream Transforms
+// ==== Transforms
 
 func TestStreamTransform(t *testing.T) {
 	s := New().
@@ -316,7 +316,7 @@ func TestStreamPeek(t *testing.T) {
 	assert.Equal(t, elements2, []int{1, 2})
 }
 
-// ==== Stream Continuation
+// ==== Continuation
 
 func TestStreamIter(t *testing.T) {
 	s := New()
