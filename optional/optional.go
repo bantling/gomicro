@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-package gooptional
+package optional
 
 import (
 	"database/sql/driver"
@@ -38,8 +38,8 @@ var (
 // If no value or a nil value is provided, a new empty Optional is returned.
 // Otherwise a new Optional that wraps the value is returned.
 func Of(value ...interface{}) Optional {
-	v := gofuncs.IndexOf(value, 0)
-	return gofuncs.Ternary(gofuncs.IsNil(v), Optional{}, Optional{value: v, present: true}).(Optional)
+	v := funcs.IndexOf(value, 0)
+	return funcs.Ternary(funcs.IsNil(v), Optional{}, Optional{value: v, present: true}).(Optional)
 }
 
 // Get returns the wrapped value and whether or not it is present.
@@ -50,23 +50,23 @@ func (o Optional) Get() (interface{}, bool) {
 
 // MustGet returns the unwrapped value and panics if it is not present.
 func (o Optional) MustGet() interface{} {
-	return gofuncs.PanicVBM(o.value, o.present, errNotPresent)
+	return funcs.PanicVBM(o.value, o.present, errNotPresent)
 }
 
 // OrElse returns the wrapped value if it is present, else it returns the given value.
 func (o Optional) OrElse(value interface{}) interface{} {
-	return gofuncs.Ternary(o.present, o.value, value)
+	return funcs.Ternary(o.present, o.value, value)
 }
 
 // OrElseGet returns the wrapped value if it is present, else it returns the result of the given function.
 // supplier must be a func of no args that returns a single value to be wrapped.
 func (o Optional) OrElseGet(supplier interface{}) interface{} {
-	return gofuncs.TernaryOf(o.present, o.MustGet, supplier)
+	return funcs.TernaryOf(o.present, o.MustGet, supplier)
 }
 
 // OrElsePanic returns the wrapped value if it is present, else it panics with the result of the given function
 func (o Optional) OrElsePanic(f func() string) interface{} {
-	return gofuncs.PanicVBM(o.value, o.present, f())
+	return funcs.PanicVBM(o.value, o.present, f())
 }
 
 // IsEmpty returns true if this Optional is not present
@@ -90,7 +90,7 @@ func (o Optional) IfEmpty(f func()) {
 // consumer must be a func that receives a type the wrapped value can be converted into and has no return values.
 func (o Optional) IfPresent(consumer interface{}) {
 	if o.present {
-		gofuncs.Consumer(consumer)(o.value)
+		funcs.Consumer(consumer)(o.value)
 	}
 }
 
@@ -98,7 +98,7 @@ func (o Optional) IfPresent(consumer interface{}) {
 // consumer must be a func that receives a type the wrapped value can be converted into and has no return values.
 func (o Optional) IfPresentOrElse(consumer interface{}, f func()) {
 	if o.present {
-		gofuncs.Consumer(consumer)(o.value)
+		funcs.Consumer(consumer)(o.value)
 	} else {
 		f()
 	}
@@ -107,16 +107,16 @@ func (o Optional) IfPresentOrElse(consumer interface{}, f func()) {
 // Iter returns an *Iter of one element containing the wrapped value if present, else an empty Iter.
 // See Iter for typed methods that return builtin types.
 func (o Optional) Iter() *iter.Iter {
-	return gofuncs.Ternary(o.present, iter.Of(o.value), iter.Of()).(*iter.Iter)
+	return funcs.Ternary(o.present, iter.Of(o.value), iter.Of()).(*iter.Iter)
 }
 
 // Filter applies the predicate to the value of this Optional.
 // Returns this Optional only if this Optional is present and the filter returns true for the value.
 // Otherwise an empty Optional is returned.
 // The predicate must be a func(any) bool, where the arg is compatible with the value of this Optional.
-// Use gofuncs for predicate conjunctions, disjuctions, negations, etc.
+// Use funcs for predicate conjunctions, disjuctions, negations, etc.
 func (o Optional) Filter(predicate interface{}) Optional {
-	return gofuncs.Ternary(o.present && gofuncs.Filter(predicate)(o.value), o, Optional{}).(Optional)
+	return funcs.Ternary(o.present && funcs.Filter(predicate)(o.value), o, Optional{}).(Optional)
 }
 
 // Map the wrapped value with the given mapping function, which may return a different type.
@@ -131,8 +131,8 @@ func (o Optional) Map(f interface{}, zeroValIsPresent ...ZeroValueIsPresentFlags
 		return Optional{}
 	}
 
-	v := gofuncs.Map(f)(o.value)
-	if gofuncs.IsNil(v) {
+	v := funcs.Map(f)(o.value)
+	if funcs.IsNil(v) {
 		return Optional{}
 	}
 
@@ -149,7 +149,7 @@ func (o Optional) FlatMap(f interface{}) Optional {
 		return Optional{}
 	}
 
-	return gofuncs.MapTo(f, Optional{}).(func(interface{}) Optional)(o.value)
+	return funcs.MapTo(f, Optional{}).(func(interface{}) Optional)(o.value)
 }
 
 // Scan is database/sql Scanner interface, allowing users to read null query columns into an Optional.
@@ -160,7 +160,7 @@ func (o Optional) FlatMap(f interface{}) Optional {
 // It is up to the caller to ensure the correct type is being read.
 func (o *Optional) Scan(src interface{}) error {
 	o.value = src
-	o.present = !gofuncs.IsNil(src)
+	o.present = !funcs.IsNil(src)
 	return nil
 }
 
@@ -177,5 +177,5 @@ func (o Optional) Value() (driver.Value, error) {
 
 // String returns fmt.Sprintf("Optional (%v)", wrapped value) if present, else "Optional" if it is empty.
 func (o Optional) String() string {
-	return gofuncs.Ternary(o.present, fmt.Sprintf("Optional (%v)", o.value), emptyString).(string)
+	return funcs.Ternary(o.present, fmt.Sprintf("Optional (%v)", o.value), emptyString).(string)
 }

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-package gostream
+package stream
 
 import (
 	"io"
@@ -15,14 +15,14 @@ import (
 // composeTransforms composes two func(*Iter) *Iter f1, f2 and returns a composition func(x *Iter) *Iter of f2(f1(x)).
 // If f1 is nil, the composition degenerates to f2(x).
 // Panics if f2 is nil.
-func composeTransforms(f1, f2 func(*goiter.Iter) *goiter.Iter) func(*goiter.Iter) *goiter.Iter {
+func composeTransforms(f1, f2 func(*iter.Iter) *iter.Iter) func(*iter.Iter) *iter.Iter {
 	if f2 == nil {
 		panic("composeTransforms: f2 cannot be nil")
 	}
 
 	composition := f2
 	if f1 != nil {
-		composition = func(it *goiter.Iter) *goiter.Iter {
+		composition = func(it *iter.Iter) *iter.Iter {
 			return f2(f1(it))
 		}
 	}
@@ -33,15 +33,15 @@ func composeTransforms(f1, f2 func(*goiter.Iter) *goiter.Iter) func(*goiter.Iter
 // composeGenerators composes two func() func(*Iter) *Iter f1, f2 and returns a composition func() func(x *Iter) *Iter that returns f2()(f1()(x)).
 // If f1 is nil, the composition degenerates to f2.
 // Panics if f2 is nil.
-func composeGenerators(f1, f2 func() func(*goiter.Iter) *goiter.Iter) func() func(*goiter.Iter) *goiter.Iter {
+func composeGenerators(f1, f2 func() func(*iter.Iter) *iter.Iter) func() func(*iter.Iter) *iter.Iter {
 	if f2 == nil {
 		panic("composeGenerators: f2 cannot be nil")
 	}
 
 	composition := f2
 	if f1 != nil {
-		composition = func() func(*goiter.Iter) *goiter.Iter {
-			return func(it *goiter.Iter) *goiter.Iter { return f2()(f1()(it)) }
+		composition = func() func(*iter.Iter) *iter.Iter {
+			return func(it *iter.Iter) *iter.Iter { return f2()(f1()(it)) }
 		}
 	}
 
@@ -83,10 +83,10 @@ func IterateFunc(f interface{}) func(interface{}) interface{} {
 // Iterate takes an initial seed value and an iterative func that is applied to the seed to generate a series of values.
 // The result is an infinite series of seed, f(seed), f(f(seed)), ...
 // The infinite series is represented as an iterator.
-func Iterate(seed interface{}, f func(interface{}) interface{}) *goiter.Iter {
+func Iterate(seed interface{}, f func(interface{}) interface{}) *iter.Iter {
 	nextValue := seed
 
-	return goiter.NewIter(
+	return iter.NewIter(
 		func() (interface{}, bool) {
 			retValue := nextValue
 			nextValue = f(nextValue)
@@ -104,7 +104,7 @@ func Iterate(seed interface{}, f func(interface{}) interface{}) *goiter.Iter {
 //
 // The Stream.Transform method allows for arbitrary transforms, for cases where the transforms provided are not sufficient.
 // When calling the transform methods, the transforms are composed using function composition so that there is only one transform function in the Stream.
-// Each transform is a function that accepts a *goiter.Iter and returns a new *goiter.Iter.
+// Each transform is a function that accepts a *iter.Iter and returns a new *iter.Iter.
 //
 // The Finisher works the same way, the only difference from Stream is that Finisher transforms may track state
 // information across elements (eg, distinct requires tracking all unique elements that have occurred in past reads).
@@ -121,13 +121,13 @@ func Iterate(seed interface{}, f func(interface{}) interface{}) *goiter.Iter {
 //   Map(MapFunc(func(i int) int { return i * 2 })).
 //   AndThen().
 //   Distinct().
-//   Sort(gofuncs.IntSortFunc).
+//   Sort(funcs.IntSortFunc).
 //   ToSliceOf(giter.Of(1,3,1,2,9,7,2,4,7,5,8,6,8), 0)
 //
 // The order of operations is exactly as indicated - filter then map each element one by one into a new set, finally remove duplicates, sort the set, and collect the result into a slice of int.
 // The result will be []int{2,4,6,8}.
 //
-// Since the data to be processed is passed to Finisher methods that accept a goiter.*Iter, the stream can be reused any number of times with different data sets.
+// Since the data to be processed is passed to Finisher methods that accept a iter.*Iter, the stream can be reused any number of times with different data sets.
 // There are three general usage patterns for Stream:
 // - One off: Create a Stream/Finisher for a given data set, get the results, and discard the Stream/Finisher (like the example above).
 // - Reuse: Create a Stream/Finisher, keeping a reference to the Finisher.
@@ -138,7 +138,7 @@ func Iterate(seed interface{}, f func(interface{}) interface{}) *goiter.Iter {
 //
 // The zero value is ready to use.
 type Stream struct {
-	transform func(*goiter.Iter) *goiter.Iter
+	transform func(*iter.Iter) *iter.Iter
 }
 
 // New constructs a new Stream
@@ -149,7 +149,7 @@ func New() *Stream {
 // === Transforms
 
 // Transform composes the current transform with a new one
-func (s *Stream) Transform(t func(*goiter.Iter) *goiter.Iter) *Stream {
+func (s *Stream) Transform(t func(*iter.Iter) *iter.Iter) *Stream {
 	s.transform = composeTransforms(s.transform, t)
 	return s
 }
@@ -157,8 +157,8 @@ func (s *Stream) Transform(t func(*goiter.Iter) *goiter.Iter) *Stream {
 // Filter returns a new stream of all elements that pass the given predicate
 func (s *Stream) Filter(f func(element interface{}) bool) *Stream {
 	return s.Transform(
-		func(it *goiter.Iter) *goiter.Iter {
-			return goiter.NewIter(
+		func(it *iter.Iter) *iter.Iter {
+			return iter.NewIter(
 				func() (interface{}, bool) {
 					for it.Next() {
 						if val := it.Value(); f(val) {
@@ -185,8 +185,8 @@ func (s *Stream) FilterNot(f func(element interface{}) bool) *Stream {
 // Map maps each element to a new element, possibly of a different type
 func (s *Stream) Map(f func(element interface{}) interface{}) *Stream {
 	return s.Transform(
-		func(it *goiter.Iter) *goiter.Iter {
-			return goiter.NewIter(
+		func(it *iter.Iter) *iter.Iter {
+			return iter.NewIter(
 				func() (interface{}, bool) {
 					if it.Next() {
 						return f(it.Value()), true
@@ -202,8 +202,8 @@ func (s *Stream) Map(f func(element interface{}) interface{}) *Stream {
 // Peek returns a stream that calls a function that examines each value and performs an additional operation
 func (s *Stream) Peek(f func(interface{})) *Stream {
 	return s.Transform(
-		func(it *goiter.Iter) *goiter.Iter {
-			return goiter.NewIter(
+		func(it *iter.Iter) *iter.Iter {
+			return iter.NewIter(
 				func() (interface{}, bool) {
 					if it.Next() {
 						val := it.Value()
@@ -223,7 +223,7 @@ func (s *Stream) Peek(f func(interface{})) *Stream {
 //
 
 // Iter returns an iterator of the elements in this Stream.
-func (s Stream) Iter(source *goiter.Iter) *goiter.Iter {
+func (s Stream) Iter(source *iter.Iter) *iter.Iter {
 	it := source
 	if s.transform != nil {
 		it = s.transform(it)
@@ -273,9 +273,9 @@ type ParallelConfig struct {
 // doParallel does the grunt work of parallel processing, returning a slice of results.
 // If numItems is 0, the default value is DefaultNumberOfParallelItems.
 func doParallel(
-	source *goiter.Iter,
-	transform func(*goiter.Iter) *goiter.Iter,
-	generator func() func(*goiter.Iter) *goiter.Iter,
+	source *iter.Iter,
+	transform func(*iter.Iter) *iter.Iter,
+	generator func() func(*iter.Iter) *iter.Iter,
 	numItems uint,
 	flag ParallelFlags,
 ) []interface{} {
@@ -308,7 +308,7 @@ func doParallel(
 			go func(i int, row []interface{}) {
 				defer wg.Done()
 
-				splitData[i] = transform(goiter.OfElements(row)).ToSlice()
+				splitData[i] = transform(iter.OfElements(row)).ToSlice()
 			}(i, row)
 		}
 
@@ -316,12 +316,12 @@ func doParallel(
 		wg.Wait()
 
 		// Combine rows into a single flat slice
-		flatData = goiter.FlattenArraySlice(splitData)
+		flatData = iter.FlattenArraySlice(splitData)
 	}
 
 	// If the generator is non-nil, apply it afterwards - it cannot be done in parallel
 	if generator != nil {
-		flatData = generator()(goiter.Of(flatData...)).ToSlice()
+		flatData = generator()(iter.Of(flatData...)).ToSlice()
 	}
 
 	// Return transformed rows
@@ -349,7 +349,7 @@ func doParallel(
 // then the caller can change the data the Iterable provides, so that each call to Finisher terminal methods processes a new set of data.
 type Finisher struct {
 	stream    *Stream
-	generator func() func(*goiter.Iter) *goiter.Iter
+	generator func() func(*iter.Iter) *iter.Iter
 	finite    bool
 }
 
@@ -358,7 +358,7 @@ type Finisher struct {
 //
 
 // Transform composes the current generator with a new one
-func (fin *Finisher) Transform(g func() func(*goiter.Iter) *goiter.Iter) *Finisher {
+func (fin *Finisher) Transform(g func() func(*iter.Iter) *iter.Iter) *Finisher {
 	fin.generator = composeGenerators(fin.generator, g)
 	return fin
 }
@@ -406,11 +406,11 @@ func (fin *Finisher) Duplicate() *Finisher {
 // Filter composes the current generator with a filter of all elements that pass the given predicate generator
 func (fin *Finisher) Filter(g func() func(element interface{}) bool) *Finisher {
 	return fin.Transform(
-		func() func(it *goiter.Iter) *goiter.Iter {
+		func() func(it *iter.Iter) *iter.Iter {
 			f := g()
 
-			return func(it *goiter.Iter) *goiter.Iter {
-				return goiter.NewIter(
+			return func(it *iter.Iter) *iter.Iter {
+				return iter.NewIter(
 					func() (interface{}, bool) {
 						for it.Next() {
 							if val := it.Value(); f(val) {
@@ -429,11 +429,11 @@ func (fin *Finisher) Filter(g func() func(element interface{}) bool) *Finisher {
 // FilterNot composes the current generator with a filter of all elements that do not pass the given predicate generator
 func (fin *Finisher) FilterNot(g func() func(element interface{}) bool) *Finisher {
 	return fin.Transform(
-		func() func(it *goiter.Iter) *goiter.Iter {
+		func() func(it *iter.Iter) *iter.Iter {
 			f := g()
 
-			return func(it *goiter.Iter) *goiter.Iter {
-				return goiter.NewIter(
+			return func(it *iter.Iter) *iter.Iter {
+				return iter.NewIter(
 					func() (interface{}, bool) {
 						for it.Next() {
 							if val := it.Value(); !f(val) {
@@ -452,13 +452,13 @@ func (fin *Finisher) FilterNot(g func() func(element interface{}) bool) *Finishe
 // Limit composes the current generator with a generator that only iterates the first n elements, ignoring the rest
 func (fin *Finisher) Limit(n uint) *Finisher {
 	fin.Transform(
-		func() func(it *goiter.Iter) *goiter.Iter {
+		func() func(it *iter.Iter) *iter.Iter {
 			var (
 				elementsRead uint
 			)
 
-			return func(it *goiter.Iter) *goiter.Iter {
-				return goiter.NewIter(
+			return func(it *iter.Iter) *iter.Iter {
+				return iter.NewIter(
 					func() (interface{}, bool) {
 						if (elementsRead == n) || (!it.Next()) {
 							return nil, false
@@ -503,12 +503,12 @@ func (fin *Finisher) ReverseSort(less func(element1, element2 interface{}) bool)
 // It is up to the caller to perform validation of each reduction, which may be accomplished by using AndThen to
 // contine to a Stream that uses some combination of Filter, Map, and Peek to validate results.
 func (fin *Finisher) SetReduce(
-	generator func() func(*goiter.Iter) (interface{}, bool),
+	generator func() func(*iter.Iter) (interface{}, bool),
 ) *Finisher {
 	return fin.Transform(
-		func() func(*goiter.Iter) *goiter.Iter {
-			return func(it *goiter.Iter) *goiter.Iter {
-				return goiter.NewIter(
+		func() func(*iter.Iter) *iter.Iter {
+			return func(it *iter.Iter) *iter.Iter {
+				return iter.NewIter(
 					func() (interface{}, bool) {
 						return generator()(it)
 					},
@@ -521,11 +521,11 @@ func (fin *Finisher) SetReduce(
 // Skip composes the current generator with a generator that skips the first n elements
 func (fin *Finisher) Skip(n int) *Finisher {
 	return fin.Transform(
-		func() func(it *goiter.Iter) *goiter.Iter {
+		func() func(it *iter.Iter) *iter.Iter {
 			skipped := false
 
-			return func(it *goiter.Iter) *goiter.Iter {
-				return goiter.NewIter(
+			return func(it *iter.Iter) *iter.Iter {
+				return iter.NewIter(
 					func() (interface{}, bool) {
 						// Skip n elements only once
 						if !skipped {
@@ -558,12 +558,12 @@ func (fin *Finisher) Skip(n int) *Finisher {
 // Sort composes the current generator with a generator that sorts the values by the provided comparator.
 func (fin *Finisher) Sort(less func(element1, element2 interface{}) bool) *Finisher {
 	return fin.Transform(
-		func() func(it *goiter.Iter) *goiter.Iter {
-			var sortedIter *goiter.Iter
+		func() func(it *iter.Iter) *iter.Iter {
+			var sortedIter *iter.Iter
 			done := false
 
-			return func(it *goiter.Iter) *goiter.Iter {
-				return goiter.NewIter(
+			return func(it *iter.Iter) *iter.Iter {
+				return iter.NewIter(
 					func() (interface{}, bool) {
 						if !done {
 							// Sort all stream elements
@@ -572,7 +572,7 @@ func (fin *Finisher) Sort(less func(element1, element2 interface{}) bool) *Finis
 								return less(sorted[i], sorted[j])
 							})
 
-							sortedIter = goiter.OfElements(sorted)
+							sortedIter = iter.OfElements(sorted)
 							done = true
 						}
 
@@ -595,8 +595,8 @@ func (fin *Finisher) Sort(less func(element1, element2 interface{}) bool) *Finis
 
 // Iter returns an iterator of the elements in the given source after applying the transforms in this Finisher.
 // If the optional ParallelConfig is provided, the transformed data set is collected via parallel execution before returning the Iter.
-func (fin Finisher) Iter(source *goiter.Iter, pc ...ParallelConfig) *goiter.Iter {
-	var it *goiter.Iter
+func (fin Finisher) Iter(source *iter.Iter, pc ...ParallelConfig) *iter.Iter {
+	var it *iter.Iter
 
 	if len(pc) > 0 {
 		// Parallel execution
@@ -610,7 +610,7 @@ func (fin Finisher) Iter(source *goiter.Iter, pc ...ParallelConfig) *goiter.Iter
 			pconf.Flags,
 		)
 
-		it = goiter.Of(data...)
+		it = iter.Of(data...)
 	} else {
 		// Serial execution
 		it = source
@@ -629,7 +629,7 @@ func (fin Finisher) Iter(source *goiter.Iter, pc ...ParallelConfig) *goiter.Iter
 
 // AllMatch is true if the predicate matches all elements with short-circuit logic.
 // If the optional ParallelConfig is provided, the transformed data set is collected via parallel execution before applying the predicate.
-func (fin Finisher) AllMatch(f func(element interface{}) bool, source *goiter.Iter, pc ...ParallelConfig) bool {
+func (fin Finisher) AllMatch(f func(element interface{}) bool, source *iter.Iter, pc ...ParallelConfig) bool {
 	allMatch := true
 	for it := fin.Iter(source, pc...); it.Next(); {
 		if allMatch = f(it.Value()); !allMatch {
@@ -642,7 +642,7 @@ func (fin Finisher) AllMatch(f func(element interface{}) bool, source *goiter.It
 
 // AnyMatch is true if the predicate matches any element with short-circuit logic.
 // If the optional ParallelConfig is provided, the transformed data set is collected via parallel execution before applying the predicate.
-func (fin Finisher) AnyMatch(f func(element interface{}) bool, source *goiter.Iter, pc ...ParallelConfig) bool {
+func (fin Finisher) AnyMatch(f func(element interface{}) bool, source *iter.Iter, pc ...ParallelConfig) bool {
 	anyMatch := false
 	for it := fin.Iter(source, pc...); it.Next(); {
 		if anyMatch = f(it.Value()); anyMatch {
@@ -656,7 +656,7 @@ func (fin Finisher) AnyMatch(f func(element interface{}) bool, source *goiter.It
 // Average returns an optional average value.
 // The slice elements must be convertible to a float64.
 // If the optional ParallelConfig is provided, the transformed data set is collected via parallel execution before the calculation.
-func (fin Finisher) Average(source *goiter.Iter, pc ...ParallelConfig) gooptional.Optional {
+func (fin Finisher) Average(source *iter.Iter, pc ...ParallelConfig) optional.Optional {
 	var (
 		sum   float64
 		count int
@@ -668,16 +668,16 @@ func (fin Finisher) Average(source *goiter.Iter, pc ...ParallelConfig) gooptiona
 	}
 
 	if count == 0 {
-		return gooptional.Of()
+		return optional.Of()
 	}
 
 	avg := sum / float64(count)
-	return gooptional.Of(avg)
+	return optional.Of(avg)
 }
 
 // Count returns the count of all elements.
 // If the optional ParallelConfig is provided, the transformed data set is collected via parallel execution before counting.
-func (fin Finisher) Count(source *goiter.Iter, pc ...ParallelConfig) int {
+func (fin Finisher) Count(source *iter.Iter, pc ...ParallelConfig) int {
 	count := 0
 	for it := fin.Iter(source, pc...); it.Next(); {
 		it.Value()
@@ -689,19 +689,19 @@ func (fin Finisher) Count(source *goiter.Iter, pc ...ParallelConfig) int {
 
 // First returns the optional first element of applying any tranforms to the stream source.
 // Note that an empty Optional means either the first element is nil, or the stream is empty.
-func (fin Finisher) First(source *goiter.Iter, pc ...ParallelConfig) gooptional.Optional {
+func (fin Finisher) First(source *iter.Iter, pc ...ParallelConfig) optional.Optional {
 	var val interface{}
 
 	if it := fin.Iter(source, pc...); it.Next() {
 		val = it.Value()
 	}
 
-	return gooptional.Of(val)
+	return optional.Of(val)
 }
 
 // ForEach invokes a consumer with each element of the stream.
 // If the optional ParallelConfig is provided, the transformed data set is collected via parallel execution before invoking the consumer.
-func (fin Finisher) ForEach(f func(element interface{}), source *goiter.Iter, pc ...ParallelConfig) {
+func (fin Finisher) ForEach(f func(element interface{}), source *iter.Iter, pc ...ParallelConfig) {
 	for it := fin.Iter(source, pc...); it.Next(); {
 		f(it.Value())
 	}
@@ -712,7 +712,7 @@ func (fin Finisher) ForEach(f func(element interface{}), source *goiter.Iter, pc
 // If the optional ParallelConfig is provided, the transformed data set is collected via parallel execution before grouping.
 func (fin Finisher) GroupBy(
 	f func(element interface{}) (key interface{}),
-	source *goiter.Iter,
+	source *iter.Iter,
 	pc ...ParallelConfig,
 ) map[interface{}][]interface{} {
 	m := map[interface{}][]interface{}{}
@@ -733,18 +733,18 @@ func (fin Finisher) GroupBy(
 
 // Last returns the optional last element.
 // If the optional ParallelConfig is provided, the transformed data set is collected via parallel execution before finding the last element.
-func (fin Finisher) Last(source *goiter.Iter, pc ...ParallelConfig) gooptional.Optional {
+func (fin Finisher) Last(source *iter.Iter, pc ...ParallelConfig) optional.Optional {
 	var last interface{}
 	for it := fin.Iter(source, pc...); it.Next(); {
 		last = it.Value()
 	}
 
-	return gooptional.Of(last)
+	return optional.Of(last)
 }
 
 // Max returns an optional maximum value according to the provided comparator.
 // If the optional ParallelConfig is provided, the transformed data set is collected via parallel execution before finding the maximum.
-func (fin Finisher) Max(less func(element1, element2 interface{}) bool, source *goiter.Iter, pc ...ParallelConfig) gooptional.Optional {
+func (fin Finisher) Max(less func(element1, element2 interface{}) bool, source *iter.Iter, pc ...ParallelConfig) optional.Optional {
 	var max interface{}
 	if it := fin.Iter(source, pc...); it.Next() {
 		max = it.Value()
@@ -758,12 +758,12 @@ func (fin Finisher) Max(less func(element1, element2 interface{}) bool, source *
 		}
 	}
 
-	return gooptional.Of(max)
+	return optional.Of(max)
 }
 
 // Min returns an optional minimum value according to the provided comparator.
 // If the optional ParallelConfig is provided, the transformed data set is collected via parallel execution before finding the minimum.
-func (fin Finisher) Min(less func(element1, element2 interface{}) bool, source *goiter.Iter, pc ...ParallelConfig) gooptional.Optional {
+func (fin Finisher) Min(less func(element1, element2 interface{}) bool, source *iter.Iter, pc ...ParallelConfig) optional.Optional {
 	var min interface{}
 	if it := fin.Iter(source, pc...); it.Next() {
 		min = it.Value()
@@ -777,12 +777,12 @@ func (fin Finisher) Min(less func(element1, element2 interface{}) bool, source *
 		}
 	}
 
-	return gooptional.Of(min)
+	return optional.Of(min)
 }
 
 // NoneMatch is true if the predicate matches none of the elements with short-circuit logic.
 // If the optional ParallelConfig is provided, the transformed data set is collected via parallel execution before applying the predicate.
-func (fin Finisher) NoneMatch(f func(element interface{}) bool, source *goiter.Iter, pc ...ParallelConfig) bool {
+func (fin Finisher) NoneMatch(f func(element interface{}) bool, source *iter.Iter, pc ...ParallelConfig) bool {
 	noneMatch := true
 	for it := fin.Iter(source, pc...); it.Next(); {
 		if noneMatch = !f(it.Value()); !noneMatch {
@@ -803,7 +803,7 @@ func (fin Finisher) NoneMatch(f func(element interface{}) bool, source *goiter.I
 func (fin Finisher) Reduce(
 	identity interface{},
 	f func(accumulator interface{}, element interface{}) interface{},
-	source *goiter.Iter,
+	source *iter.Iter,
 	pc ...ParallelConfig,
 ) interface{} {
 	result := identity
@@ -817,7 +817,7 @@ func (fin Finisher) Reduce(
 // Sum returns an optional sum value.
 // The slice elements must be convertible to a float64.
 // If the optional ParallelConfig is provided, the transformed data set is collected via parallel execution before the calculation.
-func (fin Finisher) Sum(source *goiter.Iter, pc ...ParallelConfig) gooptional.Optional {
+func (fin Finisher) Sum(source *iter.Iter, pc ...ParallelConfig) optional.Optional {
 	var (
 		sum    float64
 		hasSum bool
@@ -829,16 +829,16 @@ func (fin Finisher) Sum(source *goiter.Iter, pc ...ParallelConfig) gooptional.Op
 	}
 
 	if !hasSum {
-		return gooptional.Of()
+		return optional.Of()
 	}
 
-	return gooptional.Of(sum)
+	return optional.Of(sum)
 }
 
 // SumAsInt returns an optional sum value.
 // The slice elements must be convertible to an int.
 // If the optional ParallelConfig is provided, the transformed data set is collected via parallel execution before the calculation.
-func (fin Finisher) SumAsInt(source *goiter.Iter, pc ...ParallelConfig) gooptional.Optional {
+func (fin Finisher) SumAsInt(source *iter.Iter, pc ...ParallelConfig) optional.Optional {
 	var (
 		sum    int
 		hasSum bool
@@ -850,16 +850,16 @@ func (fin Finisher) SumAsInt(source *goiter.Iter, pc ...ParallelConfig) gooption
 	}
 
 	if !hasSum {
-		return gooptional.Of()
+		return optional.Of()
 	}
 
-	return gooptional.Of(sum)
+	return optional.Of(sum)
 }
 
 // SumAsUint returns an optional sum value.
 // The slice elements must be convertible to a uint.
 // If the optional ParallelConfig is provided, the transformed data set is collected via parallel execution before the calculation.
-func (fin Finisher) SumAsUint(source *goiter.Iter, pc ...ParallelConfig) gooptional.Optional {
+func (fin Finisher) SumAsUint(source *iter.Iter, pc ...ParallelConfig) optional.Optional {
 	var (
 		sum    uint
 		hasSum bool
@@ -871,10 +871,10 @@ func (fin Finisher) SumAsUint(source *goiter.Iter, pc ...ParallelConfig) gooptio
 	}
 
 	if !hasSum {
-		return gooptional.Of()
+		return optional.Of()
 	}
 
-	return gooptional.Of(sum)
+	return optional.Of(sum)
 }
 
 // ToMap returns a map of all elements by invoking the given function to get a key/value pair for the map.
@@ -882,7 +882,7 @@ func (fin Finisher) SumAsUint(source *goiter.Iter, pc ...ParallelConfig) gooptio
 // If the optional ParallelConfig is provided, the transformed data set is collected via parallel execution before mapping.
 func (fin Finisher) ToMap(
 	f func(interface{}) (key interface{}, value interface{}),
-	source *goiter.Iter,
+	source *iter.Iter,
 	pc ...ParallelConfig,
 ) map[interface{}]interface{} {
 	m := map[interface{}]interface{}{}
@@ -902,7 +902,7 @@ func (fin Finisher) ToMap(
 func (fin Finisher) ToMapOf(
 	f func(interface{}) (key interface{}, value interface{}),
 	aKey, aValue interface{},
-	source *goiter.Iter,
+	source *iter.Iter,
 	pc ...ParallelConfig,
 ) interface{} {
 	var (
@@ -924,7 +924,7 @@ func (fin Finisher) ToMapOf(
 
 // ToSlice returns a slice of all elements.
 // If the optional ParallelConfig is provided, the transformed data set is collected via parallel execution before collecting.
-func (fin Finisher) ToSlice(source *goiter.Iter, pc ...ParallelConfig) []interface{} {
+func (fin Finisher) ToSlice(source *iter.Iter, pc ...ParallelConfig) []interface{} {
 	array := []interface{}{}
 
 	it := fin.Iter(source, pc...)
@@ -939,7 +939,7 @@ func (fin Finisher) ToSlice(source *goiter.Iter, pc ...ParallelConfig) []interfa
 // EG, if elementVal is an int, an []int is returned.
 // If the optional ParallelConfig is provided, the transformed data set is collected via parallel execution before collecting.
 // Panics if elements are not convertible to the type of elementVal.
-func (fin Finisher) ToSliceOf(elementVal interface{}, source *goiter.Iter, pc ...ParallelConfig) interface{} {
+func (fin Finisher) ToSliceOf(elementVal interface{}, source *iter.Iter, pc ...ParallelConfig) interface{} {
 	var (
 		elementTyp = reflect.TypeOf(elementVal)
 		array      = reflect.MakeSlice(reflect.SliceOf(elementTyp), 0, 0)
@@ -959,7 +959,7 @@ const (
 // ToByteWriter writes the source to the Writer after applying any transformations.
 // If the optional ParallelConfig is provided, the transformed data set is collected via parallel execution before writing it.
 // Panics if elements are not convertible to byte.
-func (fin Finisher) ToByteWriter(w io.Writer, source *goiter.Iter, pc ...ParallelConfig) (int, error) {
+func (fin Finisher) ToByteWriter(w io.Writer, source *iter.Iter, pc ...ParallelConfig) (int, error) {
 	var (
 		buf        = make([]byte, toWriterBufSize)
 		count      = 0
@@ -1011,7 +1011,7 @@ func (fin Finisher) ToByteWriter(w io.Writer, source *goiter.Iter, pc ...Paralle
 // ToRuneWriter writes the source to the Writer after applying any transformations.
 // If the optional ParallelConfig is provided, the transformed data set is collected via parallel execution before writing it.
 // Panics if elements are not convertible to rune.
-func (fin Finisher) ToRuneWriter(w io.Writer, source *goiter.Iter, pc ...ParallelConfig) (int, error) {
+func (fin Finisher) ToRuneWriter(w io.Writer, source *iter.Iter, pc ...ParallelConfig) (int, error) {
 	var (
 		buf        = make([]byte, toWriterBufSize)
 		count      = 0
@@ -1070,7 +1070,7 @@ func (fin Finisher) ToRuneWriter(w io.Writer, source *goiter.Iter, pc ...Paralle
 // If the optional ParallelConfig is provided, when the stream is iterated the given ParallelConfig is passed to ToSlice.
 func (fin Finisher) AndThen(pc ...ParallelConfig) *Stream {
 	return New().Transform(
-		func(source *goiter.Iter) *goiter.Iter {
+		func(source *iter.Iter) *iter.Iter {
 			return fin.Iter(source, pc...)
 		},
 	)
