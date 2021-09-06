@@ -1,0 +1,3 @@
+- Rename iter.NewIter to iter.New, check other constructors
+- Add NewFinisher constructor
+- Test all usages of defer that are not nested in a func(), they may not be working

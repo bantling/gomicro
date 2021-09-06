@@ -3,6 +3,7 @@
 package iter
 
 import (
+	"io"
 	"reflect"
 	"testing"
 
@@ -872,6 +873,84 @@ func TestSplitIntoColumnsOf(t *testing.T) {
 
 		iter.SplitIntoColumnsOf(1, nil)
 		assert.Fail(t, "Must panic")
+	}
+}
+
+func TestToReader(t *testing.T) {
+	{
+		var (
+			r    io.Reader = Of().ToReader()
+			data           = make([]byte, 0)
+		)
+
+		n, err := r.Read(data)
+		assert.Equal(t, n, 0)
+		assert.Nil(t, err)
+
+		n, err = r.Read(data)
+		assert.Equal(t, n, 0)
+		assert.Nil(t, err)
+	}
+
+	{
+		var (
+			r    io.Reader = OfElements([]byte{1, 2, 3}).ToReader()
+			data           = make([]byte, 10)
+		)
+
+		n, err := r.Read(data)
+		assert.Equal(t, n, 3)
+		assert.Equal(t, io.EOF, err)
+		assert.Equal(t, []byte{1, 2, 3, 0, 0, 0, 0, 0, 0, 0}, data)
+
+		n, err = r.Read(data)
+		assert.Equal(t, n, 0)
+		assert.Equal(t, io.EOF, err)
+		assert.Equal(t, []byte{1, 2, 3, 0, 0, 0, 0, 0, 0, 0}, data)
+	}
+
+	{
+		var (
+			r    io.Reader = OfElements([]byte{1, 2, 3}).ToReader()
+			data           = make([]byte, 2)
+		)
+
+		n, err := r.Read(data)
+		assert.Equal(t, n, 2)
+		assert.Nil(t, err)
+		assert.Equal(t, []byte{1, 2}, data)
+
+		n, err = r.Read(data)
+		assert.Equal(t, n, 1)
+		assert.Equal(t, io.EOF, err)
+		assert.Equal(t, []byte{3, 2}, data)
+
+		n, err = r.Read(data)
+		assert.Equal(t, n, 0)
+		assert.Equal(t, io.EOF, err)
+		assert.Equal(t, []byte{3, 2}, data)
+	}
+
+	{
+		var (
+			r              = OfElements([]byte{1, 2, 3, 4})
+			rdr  io.Reader = r.ToReader()
+			data           = make([]byte, 2)
+		)
+
+		n, err := rdr.Read(data)
+		assert.Equal(t, n, 2)
+		assert.Nil(t, err)
+		assert.Equal(t, []byte{1, 2}, data)
+
+		assert.True(t, r.Next())
+
+		rdr = r.ToReader()
+		n, err = rdr.Read(data)
+		assert.Equal(t, n, 2)
+		assert.Equal(t, []byte{3, 4}, data)
+
+		assert.False(t, r.Next())
 	}
 }
 

@@ -661,6 +661,41 @@ func (it *Iter) SplitIntoColumnsOf(rows uint, value interface{}) interface{} {
 	return split.Interface()
 }
 
+// ReaderFunc is an adapter to allow the use of ordinary functions as Readers.
+// If f is a function with the appropriate signature, ReaderFunc(f) is a Reader that calls f.
+type ReaderFunc func(p []byte) (n int, err error)
+
+// Read returns r(p)
+func (r ReaderFunc) Read(p []byte) (n int, err error) {
+	return r(p)
+}
+
+// ToReader converts an Iter into a Reader.
+// The elements must be byte, or a panic will occur when they are iterated.
+func (it *Iter) ToReader() io.Reader {
+	return ReaderFunc(func(p []byte) (int, error) {
+		var (
+			n int
+			l = len(p)
+		)
+
+		if l == 0 {
+			return 0, nil
+		}
+
+		for (n < l) && it.Next() {
+			p[n] = it.Value().(byte)
+			n++
+		}
+
+		if n < l {
+			return n, io.EOF
+		}
+
+		return n, nil
+	})
+}
+
 // ToSlice collects the elements into a slice
 func (it *Iter) ToSlice() []interface{} {
 	slice := []interface{}{}

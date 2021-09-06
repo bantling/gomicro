@@ -3,9 +3,18 @@
 package stream
 
 import (
+	"bytes"
+	"encoding/json"
+	"reflect"
 	"sync"
 
 	"github.com/bantling/gomicro/iter"
+)
+
+// Error constants
+const (
+	ErrInvalidJSONDocument = "The elements are not a valid JSON array or object"
+	ErrNotAnArrayOrSlice   = "The elements must be arrays or slices"
 )
 
 // ==== Compose
@@ -112,11 +121,106 @@ func doParallel(
 	return flatData
 }
 
-// ==== SetReduce
+// ==== SetMapper
 
-// UnmarshalJSON is a SetReduce function to unmarshals a JSON array or object into a []interface{} or a recursive map[interface{}]interface{}, respectively.
-// If the document is an array of objects, then []interface{} contains resursive map[interface{}]interface{} elements.
-// The input may contain multiple arrays and/or objects, each call will read a single array or object.
-func UnmarshalJSON() func(*iter.Iter) (interface{}, bool) {
-	return nil
+// ToJSON is a SetMap function that maps each JSON array or object from the source bytes into a
+// []interface{} or map[string]interface{}, respectively.
+// The input may have multiple arrays and/or objects, where each one is a single element in the output.
+//
+// Panics if the elements are not bytes.
+// Panics if the elements do not contain a valid JSON array or object.
+func ToJSON(it *iter.Iter) func() (interface{}, bool) {
+	return func() (interface{}, bool) {
+		if !it.Next() {
+			return nil, false
+		}
+
+		// The json.Decoder documentation says it may read more bytes then necessary from the reader.
+		// In practice, it seems to exhaust the entire reader and only decode the first array or object.
+		// So we read the input into a buffer of only one array or object, tracking brackets and braces.
+		var (
+			stack []byte
+			buf   []byte
+			ch    byte
+		)
+
+		// Must start with [ or {
+		if ch = it.Value().(byte); !((ch == '[') || (ch == '{')) {
+			panic(ErrInvalidJSONDocument)
+		}
+		stack = append(stack, ch)
+		buf = append(buf, ch)
+
+		for it.Next() {
+			ch = it.Value().(byte)
+			buf = append(buf, ch)
+
+			// Stack up [ and {
+			if (ch == '[') || (ch == '{') {
+				stack = append(stack, ch)
+			} else if (ch == ']') || (ch == '}') {
+				// Match ] and } with last element in stack
+				if ch == ']' {
+					if stack[len(stack)-1] != '[' {
+						panic(ErrInvalidJSONDocument)
+					}
+				} else if stack[len(stack)-1] != '{' {
+					panic(ErrInvalidJSONDocument)
+				}
+
+				if stack = stack[0 : len(stack)-1]; len(stack) == 0 {
+					break
+				}
+			}
+		}
+
+		// The stack must be empty, or the doc ended prematurely
+		if len(stack) > 0 {
+			panic(ErrInvalidJSONDocument)
+		}
+
+		// Use json.Unmarshal to unmarshal the array or object
+		var (
+			doc     interface{}
+			decoder = json.NewDecoder(bytes.NewBuffer(buf))
+		)
+		decoder.UseNumber()
+
+		if err := decoder.Decode(&doc); err != nil {
+			panic(err)
+		}
+
+		return doc, true
+	}
+}
+
+// FromArraySlice is a SetMap function that maps each source array or slice into their elements.
+// Panics if the elements are npot arrays or slices.
+func FromArraySlice(it *iter.Iter) func() (interface{}, bool) {
+	var (
+		arraySlice reflect.Value
+		n          = 0
+		sz         = 0
+	)
+
+	return func() (interface{}, bool) {
+		// Search for next non-empty array or slice, if we need to
+		for (n == sz) && it.Next() {
+			arraySlice = reflect.ValueOf(it.Value())
+			if kind := arraySlice.Kind(); !((kind == reflect.Array) || (kind == reflect.Slice)) {
+				panic(ErrNotAnArrayOrSlice)
+			}
+
+			n = 0
+			sz = arraySlice.Len()
+		}
+
+		if n == sz {
+			return nil, false
+		}
+
+		value := arraySlice.Index(n).Interface()
+		n++
+		return value, true
+	}
 }

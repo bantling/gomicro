@@ -168,36 +168,19 @@ func (fin *Finisher) ReverseSort(less func(element1, element2 interface{}) bool)
 	})
 }
 
-// SetReduce uses a generated function to reduce the set of input elements to a smaller set of output elements by
-// iteratively executing a function with the current accumulated value and the next stream element.
+// SetMap uses a generated function to reduce the set of input elements to a smaller set of output elements by
+// iterating a subset of elements to produce a single new element. The generator is executed at the beginning of each
+// reduction to ensure they begin with a consistent initial state.
 //
-// The generator is executed at the beginning of each reduction, so that each reduction begins with a
-// consistent initial state, including the initial value.
-//
-// The generated function returns both the accumulated value so far and a boolean flag that is true to indicate more
-// elements can be added to the current reduction. When the flag is false, it means the current reduction is complete,
-// and the current accumulated value is added to the output stream.
-//
-// If there are no elements in the input stream, no reductions occur and no values are added to the output stream.
-// Otherwise, the result is one or more reductions provided by f(f(element1), element2)...
-//
-// Note that there is a corner case to consider: it is possible that the final reduction runs out of input elements
-// before the iterative function indicates the accumulated value is complete. The incomplete accumulated value will be
-// the final output stream result.
-//
-// It is up to the caller to perform validation of each reduction, which may be accomplished by using AndThen to
-// contine to a Stream that uses some combination of Filter, Map, and Peek to validate results.
-func (fin *Finisher) SetReduce(
-	generator func() func(*iter.Iter) (interface{}, bool),
+// If there are no elements in the input stream before the next reduction begins, then iteration stops without calling the generator.
+// It is up to the generator to handle the case of running out of input before the reduction is considered commplete, which may panic.
+func (fin *Finisher) SetMap(
+	generator func(*iter.Iter) func() (interface{}, bool),
 ) *Finisher {
 	return fin.Transform(
 		func() func(*iter.Iter) *iter.Iter {
 			return func(it *iter.Iter) *iter.Iter {
-				return iter.NewIter(
-					func() (interface{}, bool) {
-						return generator()(it)
-					},
-				)
+				return iter.NewIter(generator(it))
 			}
 		},
 	)

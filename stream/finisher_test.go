@@ -4,6 +4,7 @@ package stream
 
 import (
 	"bytes"
+	"encoding/json"
 	"math"
 	"strconv"
 	"strings"
@@ -81,25 +82,24 @@ func TestFinisherReverseSort(t *testing.T) {
 	assert.Equal(t, []interface{}{3, 2, 1}, f.Iter(iter.Of(2, 3, 1)).ToSlice())
 }
 
-func TestFinisherSetReduce(t *testing.T) {
+func TestFinisherSetMap(t *testing.T) {
 	// Add pairs of ints to produce a new set of ints that is half the size.
 	// If the source set is an odd length, the last int is returned as is.
-	f := New().AndThen().SetReduce(
-		func() func(*iter.Iter) (interface{}, bool) {
-			return func(it *iter.Iter) (interface{}, bool) {
+	f := New().AndThen().SetMap(
+		func(it *iter.Iter) func() (interface{}, bool) {
+			return func() (interface{}, bool) {
 				var val1, val2 int
 
-				if it.Next() {
-					val1 = it.IntValue()
-
-					if it.Next() {
-						val2 = it.IntValue()
-					}
-
-					return val1 + val2, true
+				if !it.Next() {
+					return nil, false
 				}
 
-				return nil, false
+				val1 = it.IntValue()
+				if it.Next() {
+					val2 = it.IntValue()
+				}
+
+				return val1 + val2, true
 			}
 		},
 	)
@@ -113,20 +113,18 @@ func TestFinisherSetReduce(t *testing.T) {
 	// Reader of bytes that are a json array of ints, where each int is returned as is.
 	// EG, bytes must be of the form [1,20,300].
 	// Returns an int[]
-	f = New().AndThen().SetReduce(
-		func() func(*iter.Iter) (interface{}, bool) {
-			var (
-				state      = 0
-				currentVal = 0
-				array      = []int{}
-			)
-
-			return func(it *iter.Iter) (interface{}, bool) {
-				// Test next, unreading the value if we have one to simplify the following for loop
+	f = New().AndThen().SetMap(
+		func(it *iter.Iter) func() (interface{}, bool) {
+			return func() (interface{}, bool) {
 				if !it.Next() {
 					return nil, false
 				}
-				it.Unread(it.Value())
+
+				var (
+					state      = 0
+					currentVal = 0
+					array      = []int{}
+				)
 
 			LOOP:
 				for it.Next() {
@@ -192,13 +190,35 @@ func TestFinisherSetReduce(t *testing.T) {
 	)
 
 	for _, v := range []string{"{", "[", "[a", "[0a", "[0,"} {
-		defer func() {
-			assert.Equal(t, "Invalid JSON array", recover())
-		}()
+		func() {
+			defer func() {
+				assert.Equal(t, "Invalid JSON array", recover())
+			}()
 
-		f.ToSlice(iter.OfReader(strings.NewReader(v)))
-		assert.Fail(t, "Must panic")
+			f.ToSlice(iter.OfReader(strings.NewReader(v)))
+			assert.Fail(t, "Must panic")
+		}()
 	}
+
+	// Reader of bytes that are valid json arrays, exploded to their elements
+	f = New().AndThen().SetMap(ToJSON).SetMap(FromArraySlice)
+	assert.Equal(
+		t,
+		[]interface{}{},
+		f.ToSlice(iter.OfReader(strings.NewReader(`[]`))),
+	)
+
+	assert.Equal(
+		t,
+		[]interface{}{"foo", json.Number("1"), true, nil},
+		f.ToSlice(iter.OfReader(strings.NewReader(`["foo", 1, true, null]`))),
+	)
+
+	assert.Equal(
+		t,
+		[]interface{}{map[string]interface{}{"foo": "bar", "baz": json.Number("2"), "taz": true, "zat": nil}},
+		f.ToSlice(iter.OfReader(strings.NewReader(`[{"foo": "bar", "baz": 2, "taz": true, "zat": null}]`))),
+	)
 }
 
 func TestFinisherSkip(t *testing.T) {
