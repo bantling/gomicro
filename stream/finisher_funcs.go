@@ -121,7 +121,7 @@ func doParallel(
 	return flatData
 }
 
-// ==== SetMapper
+// ==== Transform
 
 // ToJSON is a SetMap function that maps each JSON array or object from the source bytes into a
 // []interface{} or map[string]interface{}, respectively.
@@ -129,98 +129,102 @@ func doParallel(
 //
 // Panics if the elements are not bytes.
 // Panics if the elements do not contain a valid JSON array or object.
-func ToJSON(it *iter.Iter) func() (interface{}, bool) {
-	return func() (interface{}, bool) {
-		if !it.Next() {
-			return nil, false
-		}
+func ToJSON() func(*iter.Iter) *iter.Iter {
+	return func(it *iter.Iter) *iter.Iter {
+		return iter.NewIter(func() (interface{}, bool) {
+			if !it.Next() {
+				return nil, false
+			}
 
-		// The json.Decoder documentation says it may read more bytes then necessary from the reader.
-		// In practice, it seems to exhaust the entire reader and only decode the first array or object.
-		// So we read the input into a buffer of only one array or object, tracking brackets and braces.
-		var (
-			stack []byte
-			buf   []byte
-			ch    byte
-		)
+			// The json.Decoder documentation says it may read more bytes then necessary from the reader.
+			// In practice, it seems to exhaust the entire reader and only decode the first array or object.
+			// So we read the input into a buffer of only one array or object, tracking brackets and braces.
+			var (
+				stack []byte
+				buf   []byte
+				ch    byte
+			)
 
-		// Must start with [ or {
-		if ch = it.Value().(byte); !((ch == '[') || (ch == '{')) {
-			panic(ErrInvalidJSONDocument)
-		}
-		stack = append(stack, ch)
-		buf = append(buf, ch)
-
-		for it.Next() {
-			ch = it.Value().(byte)
+			// Must start with [ or {
+			if ch = it.Value().(byte); !((ch == '[') || (ch == '{')) {
+				panic(ErrInvalidJSONDocument)
+			}
+			stack = append(stack, ch)
 			buf = append(buf, ch)
 
-			// Stack up [ and {
-			if (ch == '[') || (ch == '{') {
-				stack = append(stack, ch)
-			} else if (ch == ']') || (ch == '}') {
-				// Match ] and } with last element in stack
-				if ch == ']' {
-					if stack[len(stack)-1] != '[' {
+			for it.Next() {
+				ch = it.Value().(byte)
+				buf = append(buf, ch)
+
+				// Stack up [ and {
+				if (ch == '[') || (ch == '{') {
+					stack = append(stack, ch)
+				} else if (ch == ']') || (ch == '}') {
+					// Match ] and } with last element in stack
+					if ch == ']' {
+						if stack[len(stack)-1] != '[' {
+							panic(ErrInvalidJSONDocument)
+						}
+					} else if stack[len(stack)-1] != '{' {
 						panic(ErrInvalidJSONDocument)
 					}
-				} else if stack[len(stack)-1] != '{' {
-					panic(ErrInvalidJSONDocument)
-				}
 
-				if stack = stack[0 : len(stack)-1]; len(stack) == 0 {
-					break
+					if stack = stack[0 : len(stack)-1]; len(stack) == 0 {
+						break
+					}
 				}
 			}
-		}
 
-		// The stack must be empty, or the doc ended prematurely
-		if len(stack) > 0 {
-			panic(ErrInvalidJSONDocument)
-		}
+			// The stack must be empty, or the doc ended prematurely
+			if len(stack) > 0 {
+				panic(ErrInvalidJSONDocument)
+			}
 
-		// Use json.Unmarshal to unmarshal the array or object
-		var (
-			doc     interface{}
-			decoder = json.NewDecoder(bytes.NewBuffer(buf))
-		)
-		decoder.UseNumber()
+			// Use json.Unmarshal to unmarshal the array or object
+			var (
+				doc     interface{}
+				decoder = json.NewDecoder(bytes.NewBuffer(buf))
+			)
+			decoder.UseNumber()
 
-		if err := decoder.Decode(&doc); err != nil {
-			panic(err)
-		}
+			if err := decoder.Decode(&doc); err != nil {
+				panic(err)
+			}
 
-		return doc, true
+			return doc, true
+		})
 	}
 }
 
 // FromArraySlice is a SetMap function that maps each source array or slice into their elements.
 // Panics if the elements are npot arrays or slices.
-func FromArraySlice(it *iter.Iter) func() (interface{}, bool) {
-	var (
-		arraySlice reflect.Value
-		n          = 0
-		sz         = 0
-	)
+func FromArraySlice() func(*iter.Iter) *iter.Iter {
+	return func(it *iter.Iter) *iter.Iter {
+		var (
+			arraySlice reflect.Value
+			n          = 0
+			sz         = 0
+		)
 
-	return func() (interface{}, bool) {
-		// Search for next non-empty array or slice, if we need to
-		for (n == sz) && it.Next() {
-			arraySlice = reflect.ValueOf(it.Value())
-			if kind := arraySlice.Kind(); !((kind == reflect.Array) || (kind == reflect.Slice)) {
-				panic(ErrNotAnArrayOrSlice)
+		return iter.NewIter(func() (interface{}, bool) {
+			// Search for next non-empty array or slice, if we need to
+			for (n == sz) && it.Next() {
+				arraySlice = reflect.ValueOf(it.Value())
+				if kind := arraySlice.Kind(); !((kind == reflect.Array) || (kind == reflect.Slice)) {
+					panic(ErrNotAnArrayOrSlice)
+				}
+
+				n = 0
+				sz = arraySlice.Len()
 			}
 
-			n = 0
-			sz = arraySlice.Len()
-		}
+			if n == sz {
+				return nil, false
+			}
 
-		if n == sz {
-			return nil, false
-		}
-
-		value := arraySlice.Index(n).Interface()
-		n++
-		return value, true
+			value := arraySlice.Index(n).Interface()
+			n++
+			return value, true
+		})
 	}
 }

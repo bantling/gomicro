@@ -19,6 +19,7 @@ import (
 // ==== Transforms
 
 func TestFinisherTransform(t *testing.T) {
+	// Simple transform
 	f := New().AndThen().Transform(func() func(*iter.Iter) *iter.Iter {
 		return func(it *iter.Iter) *iter.Iter {
 			return iter.NewIter(func() (interface{}, bool) {
@@ -32,62 +33,12 @@ func TestFinisherTransform(t *testing.T) {
 	})
 
 	assert.Equal(t, []int{2, 4, 6}, f.Iter(iter.Of(1, 2, 3)).ToSliceOf(0))
-}
 
-func TestFinisherDistinct(t *testing.T) {
-	f := New().AndThen().Distinct()
-	assert.Equal(t, []interface{}{}, f.Iter(iter.Of()).ToSlice())
-	assert.Equal(t, []interface{}{1}, f.Iter(iter.Of(1)).ToSlice())
-	assert.Equal(t, []interface{}{1, 2}, f.Iter(iter.Of(1, 1, 2)).ToSlice())
-	assert.Equal(t, []interface{}{1, 2, 3}, f.Iter(iter.Of(1, 2, 2, 1, 3)).ToSlice())
-}
-
-func TestFinisherDuplicate(t *testing.T) {
-	f := New().AndThen().Duplicate()
-	assert.Equal(t, []interface{}{}, f.Iter(iter.Of()).ToSlice())
-	assert.Equal(t, []interface{}{}, f.Iter(iter.Of(1)).ToSlice())
-	assert.Equal(t, []interface{}{1}, f.Iter(iter.Of(1, 1, 2)).ToSlice())
-	assert.Equal(t, []interface{}{2, 1}, f.Iter(iter.Of(1, 2, 2, 1, 3)).ToSlice())
-}
-
-func TestFinisherFilter(t *testing.T) {
-	f := New().AndThen().Filter(func() func(element interface{}) bool {
-		return func(element interface{}) bool {
-			return element.(int) < 3
-		}
-	})
-	assert.Equal(t, []interface{}{}, f.Iter(iter.Of()).ToSlice())
-	assert.Equal(t, []interface{}{1, 2}, f.Iter(iter.Of(1, 2, 3)).ToSlice())
-}
-
-func TestFinisherFilterNot(t *testing.T) {
-	f := New().AndThen().FilterNot(func() func(element interface{}) bool {
-		return func(element interface{}) bool {
-			return element.(int) < 3
-		}
-	})
-	assert.Equal(t, []interface{}{}, f.Iter(iter.Of()).ToSlice())
-	assert.Equal(t, []interface{}{3}, f.Iter(iter.Of(1, 2, 3)).ToSlice())
-}
-
-func TestFinisherLimit(t *testing.T) {
-	f := New().AndThen().Limit(2)
-	assert.Equal(t, []interface{}{}, f.Iter(iter.Of()).ToSlice())
-	assert.Equal(t, []interface{}{1, 2}, f.Iter(iter.Of(1, 2, 3)).ToSlice())
-}
-
-func TestFinisherReverseSort(t *testing.T) {
-	f := New().AndThen().ReverseSort(funcs.IntSortFunc)
-	assert.Equal(t, []interface{}{}, f.Iter(iter.Of()).ToSlice())
-	assert.Equal(t, []interface{}{3, 2, 1}, f.Iter(iter.Of(2, 3, 1)).ToSlice())
-}
-
-func TestFinisherSetMap(t *testing.T) {
 	// Add pairs of ints to produce a new set of ints that is half the size.
 	// If the source set is an odd length, the last int is returned as is.
-	f := New().AndThen().SetMap(
-		func(it *iter.Iter) func() (interface{}, bool) {
-			return func() (interface{}, bool) {
+	f = New().AndThen().Transform(func() func(it *iter.Iter) *iter.Iter {
+		return func(it *iter.Iter) *iter.Iter {
+			return iter.NewIter(func() (interface{}, bool) {
 				var val1, val2 int
 
 				if !it.Next() {
@@ -100,9 +51,9 @@ func TestFinisherSetMap(t *testing.T) {
 				}
 
 				return val1 + val2, true
-			}
-		},
-	)
+			})
+		}
+	})
 
 	assert.Equal(t, []interface{}{}, f.ToSlice(iter.Of()))
 	assert.Equal(t, []interface{}{1}, f.ToSlice(iter.Of(1)))
@@ -113,9 +64,9 @@ func TestFinisherSetMap(t *testing.T) {
 	// Reader of bytes that are a json array of ints, where each int is returned as is.
 	// EG, bytes must be of the form [1,20,300].
 	// Returns an int[]
-	f = New().AndThen().SetMap(
-		func(it *iter.Iter) func() (interface{}, bool) {
-			return func() (interface{}, bool) {
+	f = New().AndThen().Transform(func() func(*iter.Iter) *iter.Iter {
+		return func(it *iter.Iter) *iter.Iter {
+			return iter.NewIter(func() (interface{}, bool) {
 				if !it.Next() {
 					return nil, false
 				}
@@ -173,9 +124,9 @@ func TestFinisherSetMap(t *testing.T) {
 				}
 
 				return array, true
-			}
-		},
-	)
+			})
+		}
+	})
 
 	assert.Equal(
 		t,
@@ -201,7 +152,7 @@ func TestFinisherSetMap(t *testing.T) {
 	}
 
 	// Reader of bytes that are valid json arrays, exploded to their elements
-	f = New().AndThen().SetMap(ToJSON).SetMap(FromArraySlice)
+	f = New().AndThen().Transform(ToJSON).Transform(FromArraySlice)
 	assert.Equal(
 		t,
 		[]interface{}{},
@@ -219,6 +170,54 @@ func TestFinisherSetMap(t *testing.T) {
 		[]interface{}{map[string]interface{}{"foo": "bar", "baz": json.Number("2"), "taz": true, "zat": nil}},
 		f.ToSlice(iter.OfReader(strings.NewReader(`[{"foo": "bar", "baz": 2, "taz": true, "zat": null}]`))),
 	)
+}
+
+func TestFinisherDistinct(t *testing.T) {
+	f := New().AndThen().Distinct()
+	assert.Equal(t, []interface{}{}, f.Iter(iter.Of()).ToSlice())
+	assert.Equal(t, []interface{}{1}, f.Iter(iter.Of(1)).ToSlice())
+	assert.Equal(t, []interface{}{1, 2}, f.Iter(iter.Of(1, 1, 2)).ToSlice())
+	assert.Equal(t, []interface{}{1, 2, 3}, f.Iter(iter.Of(1, 2, 2, 1, 3)).ToSlice())
+}
+
+func TestFinisherDuplicate(t *testing.T) {
+	f := New().AndThen().Duplicate()
+	assert.Equal(t, []interface{}{}, f.Iter(iter.Of()).ToSlice())
+	assert.Equal(t, []interface{}{}, f.Iter(iter.Of(1)).ToSlice())
+	assert.Equal(t, []interface{}{1}, f.Iter(iter.Of(1, 1, 2)).ToSlice())
+	assert.Equal(t, []interface{}{2, 1}, f.Iter(iter.Of(1, 2, 2, 1, 3)).ToSlice())
+}
+
+func TestFinisherFilter(t *testing.T) {
+	f := New().AndThen().Filter(func() func(element interface{}) bool {
+		return func(element interface{}) bool {
+			return element.(int) < 3
+		}
+	})
+	assert.Equal(t, []interface{}{}, f.Iter(iter.Of()).ToSlice())
+	assert.Equal(t, []interface{}{1, 2}, f.Iter(iter.Of(1, 2, 3)).ToSlice())
+}
+
+func TestFinisherFilterNot(t *testing.T) {
+	f := New().AndThen().FilterNot(func() func(element interface{}) bool {
+		return func(element interface{}) bool {
+			return element.(int) < 3
+		}
+	})
+	assert.Equal(t, []interface{}{}, f.Iter(iter.Of()).ToSlice())
+	assert.Equal(t, []interface{}{3}, f.Iter(iter.Of(1, 2, 3)).ToSlice())
+}
+
+func TestFinisherLimit(t *testing.T) {
+	f := New().AndThen().Limit(2)
+	assert.Equal(t, []interface{}{}, f.Iter(iter.Of()).ToSlice())
+	assert.Equal(t, []interface{}{1, 2}, f.Iter(iter.Of(1, 2, 3)).ToSlice())
+}
+
+func TestFinisherReverseSort(t *testing.T) {
+	f := New().AndThen().ReverseSort(funcs.IntSortFunc)
+	assert.Equal(t, []interface{}{}, f.Iter(iter.Of()).ToSlice())
+	assert.Equal(t, []interface{}{3, 2, 1}, f.Iter(iter.Of(2, 3, 1)).ToSlice())
 }
 
 func TestFinisherSkip(t *testing.T) {

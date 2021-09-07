@@ -168,24 +168,6 @@ func (fin *Finisher) ReverseSort(less func(element1, element2 interface{}) bool)
 	})
 }
 
-// SetMap uses a generated function to reduce the set of input elements to a smaller set of output elements by
-// iterating a subset of elements to produce a single new element. The generator is executed at the beginning of each
-// reduction to ensure they begin with a consistent initial state.
-//
-// If there are no elements in the input stream before the next reduction begins, then iteration stops without calling the generator.
-// It is up to the generator to handle the case of running out of input before the reduction is considered commplete, which may panic.
-func (fin *Finisher) SetMap(
-	generator func(*iter.Iter) func() (interface{}, bool),
-) *Finisher {
-	return fin.Transform(
-		func() func(*iter.Iter) *iter.Iter {
-			return func(it *iter.Iter) *iter.Iter {
-				return iter.NewIter(generator(it))
-			}
-		},
-	)
-}
-
 // Skip composes the current generator with a generator that skips the first n elements
 func (fin *Finisher) Skip(n int) *Finisher {
 	return fin.Transform(

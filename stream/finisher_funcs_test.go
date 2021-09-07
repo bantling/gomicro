@@ -66,7 +66,7 @@ func TestToJSON(t *testing.T) {
 		for i := 0; i < len(goodDocs); i += 2 {
 			input := goodDocs[i]
 			it1 := iter.OfElements(input)
-			it2 := iter.NewIter(ToJSON(it1))
+			it2 := ToJSON()(it1)
 
 			assert.Equal(t, goodDocs[i+1], it2.NextValue())
 			assert.Equal(t, byte('a'), it1.NextValue())
@@ -98,7 +98,7 @@ func TestToJSON(t *testing.T) {
 			var (
 				input = goodDocs[i]
 				it1   = iter.OfElements(input)
-				it2   = iter.NewIter(ToJSON(it1))
+				it2   = ToJSON()(it1)
 			)
 
 			for _, expected := range goodDocs[i+1].([]interface{}) {
@@ -124,7 +124,7 @@ func TestToJSON(t *testing.T) {
 		for _, input := range badDocs {
 			var (
 				it1 = iter.OfElements(input)
-				it2 = iter.NewIter(ToJSON(it1))
+				it2 = ToJSON()(it1)
 			)
 
 			{
@@ -146,8 +146,7 @@ func TestFromArraySlice(t *testing.T) {
 		// Empty
 		var (
 			it1 = iter.Of()
-			fn  = FromArraySlice(it1)
-			it2 = iter.NewIter(fn)
+			it2 = FromArraySlice()(it1)
 		)
 		assert.Equal(t, []interface{}{}, it2.ToSlice())
 	}
@@ -156,8 +155,7 @@ func TestFromArraySlice(t *testing.T) {
 		// array of 1 element
 		var (
 			it1 = iter.Of([1]int{1})
-			fn  = FromArraySlice(it1)
-			it2 = iter.NewIter(fn)
+			it2 = FromArraySlice()(it1)
 		)
 		assert.Equal(t, []interface{}{1}, it2.ToSlice())
 	}
@@ -166,8 +164,7 @@ func TestFromArraySlice(t *testing.T) {
 		// slice of 2 elements
 		var (
 			it1 = iter.Of([]int{1, 2})
-			fn  = FromArraySlice(it1)
-			it2 = iter.NewIter(fn)
+			it2 = FromArraySlice()(it1)
 		)
 		assert.Equal(t, []interface{}{1, 2}, it2.ToSlice())
 	}
@@ -176,56 +173,8 @@ func TestFromArraySlice(t *testing.T) {
 		// array of 1 element and slice of 2 elements
 		var (
 			it1 = iter.Of([1]int{1}, []int{2, 3})
-			fn  = FromArraySlice(it1)
-			it2 = iter.NewIter(fn)
+			it2 = FromArraySlice()(it1)
 		)
 		assert.Equal(t, []interface{}{1, 2, 3}, it2.ToSlice())
 	}
 }
-
-// ==== SetMap
-
-//func TestSetMap(t *testing.T) {
-//	var (
-//		fin = New().AndThen().SetMap(ToJSON)
-//		it  = iter.OfElements([]byte(`[1,2,3]`))
-//	)
-//
-//	assert.Equal(
-//		t,
-//		[]interface{}{
-//			[]interface{}{float64(1), float64(2), float64(3)},
-//		},
-//		fin.ToSlice(it),
-//	)
-//	assert.False(t, it.Next())
-//
-//	it = iter.OfElements([]byte(`[1,2,3][4,5,6]`))
-//	finit := fin.Iter(it)
-//	assert.True(t, finit.Next())
-//	assert.Equal(t, []interface{}{float64(1), float64(2), float64(3)}, finit.Value())
-//	assert.Equal(t, byte('['), it.NextValue())
-//
-//	assert.Equal(
-//		t,
-//		[]interface{}{
-//			[]interface{}{float64(1), float64(2), float64(3)},
-//			[]interface{}{float64(4), float64(5), float64(6)},
-//		},
-//		fin.ToSlice(),
-//	)
-//
-//	fin = fin.SetMap(FromArraySlice)
-//
-//	assert.Equal(
-//		t,
-//		[]interface{}{float64(4), float64(5), float64(6)},
-//		fin.ToSlice(iter.OfElements([]byte(`[4,5,6]`))),
-//	)
-//
-//	assert.Equal(
-//		t,
-//		[]interface{}{float64(1), float64(2), float64(3), float64(4), float64(5), float64(6)},
-//		fin.ToSlice(iter.OfElements([]byte(`[1,2,3][4,5,6]`))),
-//	)
-//}
