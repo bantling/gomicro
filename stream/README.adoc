@@ -31,7 +31,6 @@ A http://golang.org/[Go] version of Java streams, with some signficant differenc
 ** Finisher.Duplicate returns only elements that appear at least twice
 ** Finisher.FilterNot is the same a stateful version of Stream.FilterNot
 ** Finisher.ReverseSort sorts items in reverse order
-** Finisher.SetReduce reduces a set of items into one or more smaller sets of items, which may be of a different type
 ** Finisher.GroupBy arranges source elements into a map where each key contains a slice of values
 ** Finisher.ToMap arranges source elements into a map where each key contains a single value 
 ** Finisher.ToByteWriter and ToRuneWriter write the resulting elements into a Writer

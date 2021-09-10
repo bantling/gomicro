@@ -4,6 +4,7 @@ package stream
 
 import (
 	"encoding/json"
+	"math/big"
 	"testing"
 
 	"github.com/bantling/gomicro/iter"
@@ -55,7 +56,26 @@ func TestComposeGenerators(t *testing.T) {
 
 // ==== ToJSON
 
+func TestJSONNumberConversions(t *testing.T) {
+	assert.Equal(t, json.Number("0"), JSONNumberToNumber(json.Number("0")))
+	assert.Equal(t, int64(1), JSONNumberToInt64(json.Number("1")))
+	assert.Equal(t, uint64(2), JSONNumberToUint64(json.Number("2")))
+	assert.Equal(t, float64(3.5), JSONNumberToFloat64(json.Number("3.5")))
+	assert.Equal(t, big.NewInt(4), JSONNumberToBigInt(json.Number("4")))
+	assert.Equal(t, big.NewFloat(5.25), JSONNumberToBigFloat(json.Number("5.25")))
+	assert.Equal(t, "6", JSONNumberToString(json.Number("6")))
+
+	assert.Equal(t, json.Number("0"), JSONNumberConversion(JSONNumAsNumber)(json.Number("0")))
+	assert.Equal(t, int64(1), JSONNumberConversion(JSONNumAsInt64)(json.Number("1")))
+	assert.Equal(t, uint64(2), JSONNumberConversion(JSONNumAsUint64)(json.Number("2")))
+	assert.Equal(t, float64(3.5), JSONNumberConversion(JSONNumAsFloat64)(json.Number("3.5")))
+	assert.Equal(t, big.NewInt(4), JSONNumberConversion(JSONNumAsBigInt)(json.Number("4")))
+	assert.Equal(t, big.NewFloat(5.25), JSONNumberConversion(JSONNumAsBigFloat)(json.Number("5.25")))
+	assert.Equal(t, "6", JSONNumberConversion(JSONNumAsString)(json.Number("6")))
+}
+
 func TestToJSON(t *testing.T) {
+	// single document, arrays or objects
 	{
 		goodDocs := []interface{}{
 			[]byte(`[]a`), []interface{}{},
@@ -66,7 +86,7 @@ func TestToJSON(t *testing.T) {
 		for i := 0; i < len(goodDocs); i += 2 {
 			input := goodDocs[i]
 			it1 := iter.OfElements(input)
-			it2 := ToJSON()(it1)
+			it2 := ToJSON()()(it1)
 
 			assert.Equal(t, goodDocs[i+1], it2.NextValue())
 			assert.Equal(t, byte('a'), it1.NextValue())
@@ -74,6 +94,7 @@ func TestToJSON(t *testing.T) {
 		}
 	}
 
+	// two documents, arrays or objects
 	{
 		goodDocs := []interface{}{
 			[]byte(`[][1]a`), []interface{}{
@@ -98,7 +119,7 @@ func TestToJSON(t *testing.T) {
 			var (
 				input = goodDocs[i]
 				it1   = iter.OfElements(input)
-				it2   = ToJSON()(it1)
+				it2   = ToJSON(JSONConfig{DocType: JSONArrayOrObject})()(it1)
 			)
 
 			for _, expected := range goodDocs[i+1].([]interface{}) {
@@ -109,6 +130,33 @@ func TestToJSON(t *testing.T) {
 		}
 	}
 
+	// array only
+	{
+		var (
+			input = []byte(`[1]a`)
+			it1   = iter.OfElements(input)
+			it2   = ToJSON(JSONConfig{DocType: JSONArray})()(it1)
+		)
+
+		assert.Equal(t, []interface{}{json.Number("1")}, it2.NextValue())
+		assert.Equal(t, byte('a'), it1.NextValue())
+		assert.False(t, it1.Next())
+	}
+
+	// object only
+	{
+		var (
+			input = []byte(`{"foo": "bar"}a`)
+			it1   = iter.OfElements(input)
+			it2   = ToJSON(JSONConfig{DocType: JSONObject})()(it1)
+		)
+
+		assert.Equal(t, map[string]interface{}{"foo": "bar"}, it2.NextValue())
+		assert.Equal(t, byte('a'), it1.NextValue())
+		assert.False(t, it1.Next())
+	}
+
+	// Badly formed JSON fails
 	{
 		badDocs := []interface{}{
 			[]byte(`[`),
@@ -124,18 +172,54 @@ func TestToJSON(t *testing.T) {
 		for _, input := range badDocs {
 			var (
 				it1 = iter.OfElements(input)
-				it2 = ToJSON()(it1)
+				it2 = ToJSON()()(it1)
 			)
 
-			{
+			func() {
 				defer func() {
 					assert.Equal(t, ErrInvalidJSONDocument, recover())
 				}()
 
 				it2.NextValue()
 				assert.Fail(t, "Must panic")
-			}
+			}()
 		}
+	}
+
+	// Arrays only fails on objects
+	{
+		var (
+			input = []byte(`{"foo":"bar"}`)
+			it1   = iter.OfElements(input)
+			it2   = ToJSON(JSONConfig{DocType: JSONArray})()(it1)
+		)
+
+		func() {
+			defer func() {
+				assert.Equal(t, ErrInvalidJSONArray, recover())
+			}()
+
+			it2.NextValue()
+			assert.Fail(t, "Must panic")
+		}()
+	}
+
+	// Objects only fails on arrays
+	{
+		var (
+			input = []byte(`[1]`)
+			it1   = iter.OfElements(input)
+			it2   = ToJSON(JSONConfig{DocType: JSONObject})()(it1)
+		)
+
+		func() {
+			defer func() {
+				assert.Equal(t, ErrInvalidJSONObject, recover())
+			}()
+
+			it2.NextValue()
+			assert.Fail(t, "Must panic")
+		}()
 	}
 }
 

@@ -62,7 +62,7 @@ func TestFinisherTransform(t *testing.T) {
 	assert.Equal(t, []interface{}{3, 7}, f.ToSlice(iter.Of(1, 2, 3, 4)))
 
 	// Reader of bytes that are valid json arrays, exploded to their elements
-	f = New().AndThen().Transform(ToJSON).Transform(FromArraySlice)
+	f = New().AndThen().Transform(ToJSON()).Transform(FromArraySlice)
 	assert.Equal(
 		t,
 		[]interface{}{},

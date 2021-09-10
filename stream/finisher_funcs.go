@@ -5,7 +5,9 @@ package stream
 import (
 	"bytes"
 	"encoding/json"
+	"math/big"
 	"reflect"
+	"strconv"
 	"sync"
 
 	"github.com/bantling/gomicro/iter"
@@ -14,7 +16,11 @@ import (
 // Error constants
 const (
 	ErrInvalidJSONDocument = "The elements are not a valid JSON array or object"
+	ErrInvalidJSONArray    = "The elements are not a valid JSON array"
+	ErrInvalidJSONObject   = "The elements are not a valid JSON object"
 	ErrNotAnArrayOrSlice   = "The elements must be arrays or slices"
+	ErrInvalidBigInt       = "A number couild not be converted to a math/big.Int"
+	ErrInvalidBigFloat     = "A number couild not be converted to a math/big.Float"
 )
 
 // ==== Compose
@@ -123,76 +129,277 @@ func doParallel(
 
 // ==== Transform
 
-// ToJSON is a SetMap function that maps each JSON array or object from the source bytes into a
+// JSONDocType describes what kind of JSON documents to allow - arrays or objects, only arrays, or only objects
+type JSONDocType uint
+
+// JSONDocType constants
+const (
+	JSONArrayOrObject JSONDocType = iota
+	JSONArray
+	JSONObject
+)
+
+// JSONNumberType describes what kind of Go type a JSON number should be translated to
+type JSONNumberType uint
+
+// JSONNumberType constants
+const (
+	JSONNumAsNumber = iota
+	JSONNumAsInt64
+	JSONNumAsUint64
+	JSONNumAsFloat64
+	JSONNumAsBigInt
+	JSONNumAsBigFloat
+	JSONNumAsString
+)
+
+// JSONConfig contains the parameters for JSON parsing
+type JSONConfig struct {
+	DocType JSONDocType
+	NumType JSONNumberType
+}
+
+// JSONNumberToNumber converts a json.Number into a json.Number.
+// Just returns the value as is.
+func JSONNumberToNumber(num json.Number) interface{} {
+	return num
+}
+
+// JSONNumberToInt64 converts a json.Number into an int64.
+// Panics if the Number cannot be converted into an int64.
+func JSONNumberToInt64(num json.Number) interface{} {
+	var (
+		val int64
+		err error
+	)
+
+	if val, err = strconv.ParseInt(num.String(), 10, 64); err != nil {
+		panic(err)
+	}
+
+	return val
+}
+
+// JSONNumberToUint64 converts a json.Number into a uint64.
+// Panics if the Number cannot be converted into a uint64.
+func JSONNumberToUint64(num json.Number) interface{} {
+	var (
+		val uint64
+		err error
+	)
+
+	if val, err = strconv.ParseUint(num.String(), 10, 64); err != nil {
+		panic(err)
+	}
+
+	return val
+}
+
+// JSONNumberToFloat64 converts a json.Number into a float64.
+// Panics if the Number cannot be converted into a float64.
+func JSONNumberToFloat64(num json.Number) interface{} {
+	var (
+		val float64
+		err error
+	)
+
+	if val, err = strconv.ParseFloat(num.String(), 64); err != nil {
+		panic(err)
+	}
+
+	return val
+}
+
+// JSONNumberToBigInt converts a json.Number into a math/big.Int.
+// Panics if the Number cannot be converted into an Int.
+func JSONNumberToBigInt(num json.Number) interface{} {
+	var (
+		val = big.NewInt(0)
+		ok  bool
+	)
+
+	if val, ok = val.SetString(num.String(), 10); !ok {
+		panic(ErrInvalidBigInt)
+	}
+
+	return val
+}
+
+// JSONNumberToBigFloat converts a json.Number into a math/big.Float.
+// Panics if the Number cannot be converted into a Float.
+func JSONNumberToBigFloat(num json.Number) interface{} {
+	var (
+		val = big.NewFloat(0.0)
+		ok  bool
+	)
+
+	if val, ok = val.SetString(num.String()); !ok {
+		panic(ErrInvalidBigFloat)
+	}
+
+	return val
+}
+
+// JSONNumberToString converts a json.Number into a string.
+func JSONNumberToString(num json.Number) interface{} {
+	return string(num)
+}
+
+// JSONNumberConversion returns a conversion function of json.Number to the specified type.
+// Returns nil if typ is JSONNumAsNumber.
+func JSONNumberConversion(typ JSONNumberType) func(json.Number) interface{} {
+	switch typ {
+	case JSONNumAsNumber:
+		return JSONNumberToNumber
+	case JSONNumAsInt64:
+		return JSONNumberToInt64
+	case JSONNumAsUint64:
+		return JSONNumberToUint64
+	case JSONNumAsFloat64:
+		return JSONNumberToFloat64
+	case JSONNumAsBigInt:
+		return JSONNumberToBigInt
+	case JSONNumAsBigFloat:
+		return JSONNumberToBigFloat
+	default:
+		return JSONNumberToString
+	}
+}
+
+// JSONDocumentNumberConversion recurses a JSON document (array or object) looking for array elements or object values
+// that are instances of json.Number, and converts them using the given conversion function.
+// The document is modified in place.
+func JSONDocumentNumberConversion(doc interface{}, conv func(json.Number) interface{}) interface{} {
+	handle := func(val interface{}) interface{} {
+		if num, isNum := val.(json.Number); isNum {
+			return conv(num)
+		} else if _, isArray := val.([]interface{}); isArray {
+			return JSONDocumentNumberConversion(val, conv)
+		} else if _, isObj := val.(map[string]interface{}); isObj {
+			return JSONDocumentNumberConversion(val, conv)
+		}
+		return val
+	}
+
+	if array, isArray := doc.([]interface{}); isArray {
+		for i, val := range array {
+			array[i] = handle(val)
+		}
+
+		return array
+	}
+
+	obj := doc.(map[string]interface{})
+	for k, val := range obj {
+		obj[k] = handle(val)
+	}
+
+	return obj
+}
+
+// ToJSON is a Transform function that maps each JSON array or object from the source bytes into a
 // []interface{} or map[string]interface{}, respectively.
+//
 // The input may have multiple arrays and/or objects, where each one is a single element in the output.
+// If the optional config parameter is passed, then the input may be restricted to contain only arrays or only objects,
+// and the Go type to use for json numbers can be specified (json.Number, int, uint, float64, math/big.Int, math/big.Float, string).
+// The default value for config is the zero value, which allows arrays and objects, and leaves numbers as json.Number.
 //
 // Panics if the elements are not bytes.
 // Panics if the elements do not contain a valid JSON array or object.
-func ToJSON() func(*iter.Iter) *iter.Iter {
-	return func(it *iter.Iter) *iter.Iter {
-		return iter.NewIter(func() (interface{}, bool) {
-			if !it.Next() {
-				return nil, false
-			}
+// Panics if the expected doc type is restricted to only arrays or only objects, and the elements are not the expected type.
+func ToJSON(config ...JSONConfig) func() func(*iter.Iter) *iter.Iter {
+	var cfg JSONConfig
+	if len(config) > 0 {
+		cfg = config[0]
+	}
 
-			// The json.Decoder documentation says it may read more bytes then necessary from the reader.
-			// In practice, it seems to exhaust the entire reader and only decode the first array or object.
-			// So we read the input into a buffer of only one array or object, tracking brackets and braces.
-			var (
-				stack []byte
-				buf   []byte
-				ch    byte
-			)
+	return func() func(*iter.Iter) *iter.Iter {
+		return func(it *iter.Iter) *iter.Iter {
+			return iter.NewIter(func() (interface{}, bool) {
+				if !it.Next() {
+					return nil, false
+				}
 
-			// Must start with [ or {
-			if ch = it.Value().(byte); !((ch == '[') || (ch == '{')) {
-				panic(ErrInvalidJSONDocument)
-			}
-			stack = append(stack, ch)
-			buf = append(buf, ch)
+				// The json.Decoder documentation says it may read more bytes then necessary from the reader.
+				// In practice, it seems to exhaust the entire reader and only decode the first array or object.
+				// So we read the input into a buffer of only one array or object, tracking brackets and braces.
+				var (
+					stack []byte
+					buf   []byte
+					ch    byte
+				)
 
-			for it.Next() {
+				// Check first char according to JSONDocType
 				ch = it.Value().(byte)
-				buf = append(buf, ch)
-
-				// Stack up [ and {
-				if (ch == '[') || (ch == '{') {
-					stack = append(stack, ch)
-				} else if (ch == ']') || (ch == '}') {
-					// Match ] and } with last element in stack
-					if ch == ']' {
-						if stack[len(stack)-1] != '[' {
-							panic(ErrInvalidJSONDocument)
-						}
-					} else if stack[len(stack)-1] != '{' {
+				switch cfg.DocType {
+				case JSONArrayOrObject:
+					if !((ch == '[') || (ch == '{')) {
 						panic(ErrInvalidJSONDocument)
 					}
-
-					if stack = stack[0 : len(stack)-1]; len(stack) == 0 {
-						break
+				case JSONArray:
+					if ch != '[' {
+						panic(ErrInvalidJSONArray)
+					}
+				default:
+					if ch != '{' {
+						panic(ErrInvalidJSONObject)
 					}
 				}
-			}
 
-			// The stack must be empty, or the doc ended prematurely
-			if len(stack) > 0 {
-				panic(ErrInvalidJSONDocument)
-			}
+				stack = append(stack, ch)
+				buf = append(buf, ch)
 
-			// Use json.Unmarshal to unmarshal the array or object
-			var (
-				doc     interface{}
-				decoder = json.NewDecoder(bytes.NewBuffer(buf))
-			)
-			decoder.UseNumber()
+				for it.Next() {
+					ch = it.Value().(byte)
+					buf = append(buf, ch)
 
-			if err := decoder.Decode(&doc); err != nil {
-				panic(err)
-			}
+					// Stack up [ and {
+					if (ch == '[') || (ch == '{') {
+						stack = append(stack, ch)
+					} else if (ch == ']') || (ch == '}') {
+						// Match ] and } with last element in stack
+						if lastStack := stack[len(stack)-1]; ch == ']' {
+							if lastStack != '[' {
+								panic(ErrInvalidJSONDocument)
+							}
+						} else if lastStack != '{' {
+							panic(ErrInvalidJSONDocument)
+						}
 
-			return doc, true
-		})
+						// Remove last element from stack, if it is empty, break
+						if stack = stack[0 : len(stack)-1]; len(stack) == 0 {
+							break
+						}
+					}
+				}
+
+				// The stack must be empty, or the doc ended prematurely
+				if len(stack) > 0 {
+					panic(ErrInvalidJSONDocument)
+				}
+
+				// Use json.Decoder to unmarshal the array or object from the buffer
+				// (json.Unmarshal always translates numbers to float64)
+				var (
+					doc     interface{}
+					decoder = json.NewDecoder(bytes.NewBuffer(buf))
+				)
+				// Decode numbers as json.Number
+				decoder.UseNumber()
+
+				if err := decoder.Decode(&doc); err != nil {
+					panic(err)
+				}
+
+				// If the desired numeric type is not json.Number, then convert all json.Number to the requested type
+				if cfg.NumType != JSONNumAsNumber {
+					doc = JSONDocumentNumberConversion(doc, JSONNumberConversion(cfg.NumType))
+				}
+
+				return doc, true
+			})
+		}
 	}
 }
 
