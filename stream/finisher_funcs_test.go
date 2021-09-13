@@ -99,19 +99,19 @@ func TestToJSON(t *testing.T) {
 		goodDocs := []interface{}{
 			[]byte(`[][1]a`), []interface{}{
 				[]interface{}{},
-				[]interface{}{json.Number("1")},
+				[]interface{}{int64(1)},
 			},
 			[]byte(`[1][2]a`), []interface{}{
-				[]interface{}{json.Number("1")},
-				[]interface{}{json.Number("2")},
+				[]interface{}{int64(1)},
+				[]interface{}{int64(2)},
 			},
 			[]byte(`[1,2]{"foo": null, "bar": {"baz": "taz"}}[4]a`), []interface{}{
-				[]interface{}{json.Number("1"), json.Number("2")},
+				[]interface{}{int64(1), int64(2)},
 				map[string]interface{}{
 					"foo": nil,
 					"bar": map[string]interface{}{"baz": "taz"},
 				},
-				[]interface{}{json.Number("4")},
+				[]interface{}{int64(4)},
 			},
 		}
 
@@ -119,7 +119,7 @@ func TestToJSON(t *testing.T) {
 			var (
 				input = goodDocs[i]
 				it1   = iter.OfElements(input)
-				it2   = ToJSON(JSONConfig{DocType: JSONArrayOrObject})()(it1)
+				it2   = ToJSON(JSONConfig{DocType: JSONArrayOrObject, NumType: JSONNumAsInt64})()(it1)
 			)
 
 			for _, expected := range goodDocs[i+1].([]interface{}) {
