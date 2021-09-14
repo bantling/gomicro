@@ -124,20 +124,20 @@ type Stream struct {
 }
 
 // New constructs a new Stream
-func New() *Stream {
-	return &Stream{}
+func New() Stream {
+	return Stream{}
 }
 
 // === Transforms
 
 // Transform composes the current transform with a new one
-func (s *Stream) Transform(t func(*iter.Iter) *iter.Iter) *Stream {
+func (s Stream) Transform(t func(*iter.Iter) *iter.Iter) Stream {
 	s.transform = composeTransforms(s.transform, t)
 	return s
 }
 
 // Filter returns a new stream of all elements that pass the given predicate
-func (s *Stream) Filter(f func(element interface{}) bool) *Stream {
+func (s Stream) Filter(f func(element interface{}) bool) Stream {
 	return s.Transform(
 		func(it *iter.Iter) *iter.Iter {
 			return iter.New(
@@ -156,7 +156,7 @@ func (s *Stream) Filter(f func(element interface{}) bool) *Stream {
 }
 
 // FilterNot returns a new stream of all elements that do not pass the given predicate
-func (s *Stream) FilterNot(f func(element interface{}) bool) *Stream {
+func (s Stream) FilterNot(f func(element interface{}) bool) Stream {
 	return s.Filter(
 		func(element interface{}) bool {
 			return !f(element)
@@ -165,7 +165,7 @@ func (s *Stream) FilterNot(f func(element interface{}) bool) *Stream {
 }
 
 // Map maps each element to a new element, possibly of a different type
-func (s *Stream) Map(f func(element interface{}) interface{}) *Stream {
+func (s Stream) Map(f func(element interface{}) interface{}) Stream {
 	return s.Transform(
 		func(it *iter.Iter) *iter.Iter {
 			return iter.New(
@@ -182,7 +182,7 @@ func (s *Stream) Map(f func(element interface{}) interface{}) *Stream {
 }
 
 // Peek returns a stream that calls a function that examines each value and performs an additional operation
-func (s *Stream) Peek(f func(interface{})) *Stream {
+func (s Stream) Peek(f func(interface{})) Stream {
 	return s.Transform(
 		func(it *iter.Iter) *iter.Iter {
 			return iter.New(
@@ -219,8 +219,8 @@ func (s Stream) Iter(source *iter.Iter) *iter.Iter {
 //
 
 // AndThen returns a Finisher, which performs additional post processing on the results of the transforms in this Stream.
-func (s *Stream) AndThen() *Finisher {
-	return &Finisher{
+func (s Stream) AndThen() Finisher {
+	return Finisher{
 		stream:    s,
 		generator: nil,
 	}

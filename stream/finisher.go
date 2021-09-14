@@ -33,7 +33,7 @@ import (
 // If the caller maintains a reference to the Iterable provided to the Stream this Finisher came from,
 // then the caller can change the data the Iterable provides, so that each call to Finisher terminal methods processes a new set of data.
 type Finisher struct {
-	stream    *Stream
+	stream    Stream
 	generator func() func(*iter.Iter) *iter.Iter
 	finite    bool
 }
@@ -43,8 +43,8 @@ type Finisher struct {
 //
 
 // NewFinisher constructs a new Finisher
-func NewFinisher() *Finisher {
-	return &Finisher{stream: New()}
+func NewFinisher() Finisher {
+	return Finisher{stream: New()}
 }
 
 //
@@ -52,7 +52,7 @@ func NewFinisher() *Finisher {
 //
 
 // Transform composes the current generator with a new one
-func (fin *Finisher) Transform(g func() func(*iter.Iter) *iter.Iter) *Finisher {
+func (fin Finisher) Transform(g func() func(*iter.Iter) *iter.Iter) Finisher {
 	fin.generator = composeGenerators(fin.generator, g)
 	return fin
 }
@@ -60,7 +60,7 @@ func (fin *Finisher) Transform(g func() func(*iter.Iter) *iter.Iter) *Finisher {
 // Distinct composes the current generator with a generator of distinct elements only.
 // The order of the result is the first occurence of each distinct element.
 // Elements must be a type compatible with a map key.
-func (fin *Finisher) Distinct() *Finisher {
+func (fin Finisher) Distinct() Finisher {
 	return fin.Filter(
 		func() func(element interface{}) bool {
 			alreadyRead := map[interface{}]bool{}
@@ -80,7 +80,7 @@ func (fin *Finisher) Distinct() *Finisher {
 // Duplicate composes the current generator with a generator of duplicate elements only.
 // The order of the result is the second occurence of each duplicate element.
 // Elements must be a type compatible with a map key.
-func (fin *Finisher) Duplicate() *Finisher {
+func (fin Finisher) Duplicate() Finisher {
 	return fin.Filter(
 		func() func(element interface{}) bool {
 			alreadyRead := map[interface{}]bool{}
@@ -98,7 +98,7 @@ func (fin *Finisher) Duplicate() *Finisher {
 }
 
 // Filter composes the current generator with a filter of all elements that pass the given predicate generator
-func (fin *Finisher) Filter(g func() func(element interface{}) bool) *Finisher {
+func (fin Finisher) Filter(g func() func(element interface{}) bool) Finisher {
 	return fin.Transform(
 		func() func(it *iter.Iter) *iter.Iter {
 			f := g()
@@ -121,7 +121,7 @@ func (fin *Finisher) Filter(g func() func(element interface{}) bool) *Finisher {
 }
 
 // FilterNot composes the current generator with a filter of all elements that do not pass the given predicate generator
-func (fin *Finisher) FilterNot(g func() func(element interface{}) bool) *Finisher {
+func (fin Finisher) FilterNot(g func() func(element interface{}) bool) Finisher {
 	return fin.Transform(
 		func() func(it *iter.Iter) *iter.Iter {
 			f := g()
@@ -144,8 +144,8 @@ func (fin *Finisher) FilterNot(g func() func(element interface{}) bool) *Finishe
 }
 
 // Limit composes the current generator with a generator that only iterates the first n elements, ignoring the rest
-func (fin *Finisher) Limit(n uint) *Finisher {
-	fin.Transform(
+func (fin Finisher) Limit(n uint) Finisher {
+	return fin.Transform(
 		func() func(it *iter.Iter) *iter.Iter {
 			var (
 				elementsRead uint
@@ -165,20 +165,18 @@ func (fin *Finisher) Limit(n uint) *Finisher {
 			}
 		},
 	)
-
-	return fin
 }
 
 // ReverseSort composes the current generator with a generator that sorts the values by the provided comparator in reverse order.
 // The provided function must compare elements in increasing order, same as for Sorted.
-func (fin *Finisher) ReverseSort(less func(element1, element2 interface{}) bool) *Finisher {
+func (fin Finisher) ReverseSort(less func(element1, element2 interface{}) bool) Finisher {
 	return fin.Sort(func(element1, element2 interface{}) bool {
 		return !less(element1, element2)
 	})
 }
 
 // Skip composes the current generator with a generator that skips the first n elements
-func (fin *Finisher) Skip(n int) *Finisher {
+func (fin Finisher) Skip(n int) Finisher {
 	return fin.Transform(
 		func() func(it *iter.Iter) *iter.Iter {
 			skipped := false
@@ -215,7 +213,7 @@ func (fin *Finisher) Skip(n int) *Finisher {
 }
 
 // Sort composes the current generator with a generator that sorts the values by the provided comparator.
-func (fin *Finisher) Sort(less func(element1, element2 interface{}) bool) *Finisher {
+func (fin Finisher) Sort(less func(element1, element2 interface{}) bool) Finisher {
 	return fin.Transform(
 		func() func(it *iter.Iter) *iter.Iter {
 			var sortedIter *iter.Iter
@@ -727,7 +725,7 @@ func (fin Finisher) ToRuneWriter(w io.Writer, source *iter.Iter, pc ...ParallelC
 
 // AndThen returns a stream such that when iterated, it will begin with all elements produced by ToSlice.
 // If the optional ParallelConfig is provided, when the stream is iterated the given ParallelConfig is passed to ToSlice.
-func (fin Finisher) AndThen(pc ...ParallelConfig) *Stream {
+func (fin Finisher) AndThen(pc ...ParallelConfig) Stream {
 	return New().Transform(
 		func(source *iter.Iter) *iter.Iter {
 			return fin.Iter(source, pc...)
