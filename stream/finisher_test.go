@@ -186,7 +186,7 @@ func TestFinisherFirst(t *testing.T) {
 	f := NewFinisher()
 	assert.Equal(t, 1, f.First(iter.Of(1, 2, 3)).MustGet())
 
-	f = New().Filter(func(v interface{}) bool { return v.(int) > 2 }).AndThen()
+	f = New().Filter(func(v interface{}) bool { return v.(int) > 2 }).AndFinish()
 	assert.Equal(t, 3, f.First(iter.Of(1, 2, 3)).MustGet())
 }
 
@@ -419,11 +419,11 @@ func TestToRuneWriter(t *testing.T) {
 // ==== Continuation
 
 func TestFinisherStream(t *testing.T) {
-	s := NewFinisher().AndThen()
+	s := NewFinisher().AndStream()
 	assert.Equal(t, []interface{}{}, s.Iter(iter.Of()).ToSlice())
 	assert.Equal(t, []interface{}{1, 2}, s.Iter(iter.Of(1, 2)).ToSlice())
 
-	s = NewFinisher().AndThen(ParallelConfig{})
+	s = NewFinisher().AndStream(ParallelConfig{})
 	assert.Equal(t, []interface{}{}, s.Iter(iter.Of()).ToSlice())
 	assert.Equal(t, []interface{}{1, 2}, s.Iter(iter.Of(1, 2)).ToSlice())
 }
@@ -439,7 +439,7 @@ func TestSequence(t *testing.T) {
 		// -1,   1,  -1,   3,   5,   3,   7,   9,  11,  11,  13,  15,  17
 		Filter(funcs.Filter(func(i int) bool { return i <= 7 })).
 		// -1,   1,  -1,   3,   5,   3,   7
-		AndThen().
+		AndFinish().
 		Skip(2).
 		// -1,   3,   5,   3,   7
 		Distinct().
@@ -481,17 +481,17 @@ func TestParallel(t *testing.T) {
 	assert.Equal(t, distinct, f.ToSliceOf(0, itgen(), ParallelConfig{}))
 
 	// 10
-	f = New().Map(doubler).AndThen()
+	f = New().Map(doubler).AndFinish()
 	assert.Equal(t, doubled, f.ToSliceOf(0, itgen(), ParallelConfig{}))
 
 	// 11
-	f = New().Map(doubler).AndThen().Distinct()
+	f = New().Map(doubler).AndFinish().Distinct()
 	assert.Equal(t, doubledDistinct, f.ToSliceOf(0, itgen(), ParallelConfig{}))
 }
 
 func TestThreadedReuse(t *testing.T) {
 	var (
-		f     = New().Filter(func(v interface{}) bool { return v.(int) > 5 }).AndThen().Sort(funcs.IntSortFunc)
+		f     = New().Filter(func(v interface{}) bool { return v.(int) > 5 }).AndFinish().Sort(funcs.IntSortFunc)
 		itgen = func() *iter.Iter { return iter.Of(3, 7, 8, 6) }
 	)
 
@@ -555,15 +555,15 @@ func TestConcat(t *testing.T) {
 	var (
 		f1 = New().
 			Map(func(element interface{}) interface{} { return element.(int) * 2 }).
-			AndThen().
+			AndFinish().
 			Distinct()
 		f2 = New().
 			Map(func(element interface{}) interface{} { return element.(int) * 3 }).
-			AndThen().
+			AndFinish().
 			Distinct()
 		f3 = New().
 			Map(func(element interface{}) interface{} { return element.(int) * 4 }).
-			AndThen().
+			AndFinish().
 			Distinct()
 		c = iter.Concat(
 			f1.Iter(iter.Of(1, 2)),

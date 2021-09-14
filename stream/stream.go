@@ -218,8 +218,8 @@ func (s Stream) Iter(source *iter.Iter) *iter.Iter {
 // ==== Continuation
 //
 
-// AndThen returns a Finisher, which performs additional post processing on the results of the transforms in this Stream.
-func (s Stream) AndThen() Finisher {
+// AndFinish returns a Finisher, which performs additional post processing on the results of the transforms in this Stream.
+func (s Stream) AndFinish() Finisher {
 	return Finisher{
 		stream:    s,
 		generator: nil,

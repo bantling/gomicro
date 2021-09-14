@@ -723,9 +723,9 @@ func (fin Finisher) ToRuneWriter(w io.Writer, source *iter.Iter, pc ...ParallelC
 // ==== Continuation
 //
 
-// AndThen returns a stream such that when iterated, it will begin with all elements produced by ToSlice.
+// AndStream returns a Stream such that when iterated, it will begin with all elements produced by ToSlice.
 // If the optional ParallelConfig is provided, when the stream is iterated the given ParallelConfig is passed to ToSlice.
-func (fin Finisher) AndThen(pc ...ParallelConfig) Stream {
+func (fin Finisher) AndStream(pc ...ParallelConfig) Stream {
 	return New().Transform(
 		func(source *iter.Iter) *iter.Iter {
 			return fin.Iter(source, pc...)

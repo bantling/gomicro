@@ -323,8 +323,8 @@ func TestStreamIter(t *testing.T) {
 	assert.Equal(t, []interface{}{1}, s.Iter(iter.Of(1)).ToSlice())
 }
 
-func TestStreamAndThen(t *testing.T) {
-	f := NewFinisher()
+func TestStreamAndFinish(t *testing.T) {
+	f := New().AndFinish()
 	assert.Equal(t, []interface{}{}, f.Iter(iter.Of()).ToSlice())
 	assert.Equal(t, []interface{}{1}, f.Iter(iter.Of(1)).ToSlice())
 }
