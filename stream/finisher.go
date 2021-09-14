@@ -95,7 +95,7 @@ func (fin *Finisher) Filter(g func() func(element interface{}) bool) *Finisher {
 			f := g()
 
 			return func(it *iter.Iter) *iter.Iter {
-				return iter.NewIter(
+				return iter.New(
 					func() (interface{}, bool) {
 						for it.Next() {
 							if val := it.Value(); f(val) {
@@ -118,7 +118,7 @@ func (fin *Finisher) FilterNot(g func() func(element interface{}) bool) *Finishe
 			f := g()
 
 			return func(it *iter.Iter) *iter.Iter {
-				return iter.NewIter(
+				return iter.New(
 					func() (interface{}, bool) {
 						for it.Next() {
 							if val := it.Value(); !f(val) {
@@ -143,7 +143,7 @@ func (fin *Finisher) Limit(n uint) *Finisher {
 			)
 
 			return func(it *iter.Iter) *iter.Iter {
-				return iter.NewIter(
+				return iter.New(
 					func() (interface{}, bool) {
 						if (elementsRead == n) || (!it.Next()) {
 							return nil, false
@@ -175,7 +175,7 @@ func (fin *Finisher) Skip(n int) *Finisher {
 			skipped := false
 
 			return func(it *iter.Iter) *iter.Iter {
-				return iter.NewIter(
+				return iter.New(
 					func() (interface{}, bool) {
 						// Skip n elements only once
 						if !skipped {
@@ -213,7 +213,7 @@ func (fin *Finisher) Sort(less func(element1, element2 interface{}) bool) *Finis
 			done := false
 
 			return func(it *iter.Iter) *iter.Iter {
-				return iter.NewIter(
+				return iter.New(
 					func() (interface{}, bool) {
 						if !done {
 							// Sort all stream elements

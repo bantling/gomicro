@@ -17,7 +17,7 @@ func TestComposeGenerators(t *testing.T) {
 	var (
 		f1 = func() func(it *iter.Iter) *iter.Iter {
 			return func(it *iter.Iter) *iter.Iter {
-				return iter.NewIter(
+				return iter.New(
 					func() (interface{}, bool) {
 						for it.Next() {
 							if val := it.Value(); val.(int) < 5 {
@@ -33,7 +33,7 @@ func TestComposeGenerators(t *testing.T) {
 
 		f2 = func() func(it *iter.Iter) *iter.Iter {
 			return func(it *iter.Iter) *iter.Iter {
-				return iter.NewIter(
+				return iter.New(
 					func() (interface{}, bool) {
 						for it.Next() {
 							if val := it.Value(); val.(int) > 0 {

@@ -10,7 +10,7 @@ import (
 
 // Error constants
 const (
-	ErrNewIterNeedsIterator             = "NewIter requires an iterator"
+	ErrNewNeedsIterator                 = "New requires an iterator"
 	ErrValueExhaustedIter               = "Iter.Value called on exhausted iterator"
 	ErrValueNextFirst                   = "Iter.Next has to be called before iter.Value"
 	ErrValueCannotBeNil                 = "value cannot be nil"
@@ -34,13 +34,13 @@ type Iter struct {
 	buffer     []interface{}
 }
 
-// NewIter constructs an Iter from an iterating function.
+// New constructs an Iter from an iterating function.
 // The function must returns (nextItem, true) for every item available to iterate, then return (invalid, false) on the next call after the last item.
 // Once the function returns a false bool value, it will never be called again.
 // Panics if iter is nil.
-func NewIter(iter func() (interface{}, bool)) *Iter {
+func New(iter func() (interface{}, bool)) *Iter {
 	if iter == nil {
-		panic(ErrNewIterNeedsIterator)
+		panic(ErrNewNeedsIterator)
 	}
 
 	return &Iter{iter: iter}
@@ -49,7 +49,7 @@ func NewIter(iter func() (interface{}, bool)) *Iter {
 // Of constructs an Iter that iterates the items passed.
 // If any item is an array/slice/map/Iterable, it will be handled the same as any other type - the whole array/slice/map/Iterable will iterated as a single value.
 func Of(items ...interface{}) *Iter {
-	return NewIter(ArraySliceIterFunc(reflect.ValueOf(items)))
+	return New(ArraySliceIterFunc(reflect.ValueOf(items)))
 }
 
 // OfFlatten constructs an Iter that flattens a multi-dimensional array or slice into a new one-dimensional slice.
@@ -57,10 +57,10 @@ func Of(items ...interface{}) *Iter {
 func OfFlatten(items interface{}) *Iter {
 	if items == nil {
 		// Can't call reflect.ValueOf(nil)
-		return NewIter(NoValueIterFunc)
+		return New(NoValueIterFunc)
 	}
 
-	return NewIter(ArraySliceIterFunc(reflect.ValueOf(FlattenArraySlice(items))))
+	return New(ArraySliceIterFunc(reflect.ValueOf(FlattenArraySlice(items))))
 }
 
 // OfElements constructs an Iter that iterates the elements of the item passed.
@@ -68,28 +68,28 @@ func OfFlatten(items interface{}) *Iter {
 func OfElements(item interface{}) *Iter {
 	if item == nil {
 		// Can't call reflect.ValueOf(nil)
-		return NewIter(NoValueIterFunc)
+		return New(NoValueIterFunc)
 	}
 
-	return NewIter(ElementsIterFunc(reflect.ValueOf(item)))
+	return New(ElementsIterFunc(reflect.ValueOf(item)))
 }
 
 // OfReader constructs an Iter that iterates the bytes of a reader.
 // See ReaderIterFunc for details.
 func OfReader(src io.Reader) *Iter {
-	return NewIter(ReaderIterFunc(src))
+	return New(ReaderIterFunc(src))
 }
 
 // OfReaderRunes constructs an Iter that iterates the runes of a reader.
 // See ReaderToRunesIterFunc for details.
 func OfReaderRunes(src io.Reader) *Iter {
-	return NewIter(ReaderToRunesIterFunc(src))
+	return New(ReaderToRunesIterFunc(src))
 }
 
 // OfReaderLines constructs an Iter that iterates the lines of a reader.
 // See ReaderToLinesIterFunc for details.
 func OfReaderLines(src io.Reader) *Iter {
-	return NewIter(ReaderToLinesIterFunc(src))
+	return New(ReaderToLinesIterFunc(src))
 }
 
 // Concat concatenates the provided Iters into a single new Iter that iterates the first iter, then the second, etc.
@@ -99,7 +99,7 @@ func Concat(iters ...*Iter) *Iter {
 		i    int
 		iter *Iter
 	)
-	return NewIter(func() (interface{}, bool) {
+	return New(func() (interface{}, bool) {
 		for {
 			if i == len(iters) {
 				return nil, false

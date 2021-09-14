@@ -119,7 +119,7 @@ func (rp *RunePositionIter) Position() int {
 
 // Iter is Iterable interface
 func (rp *RunePositionIter) Iter() *Iter {
-	return NewIter(
+	return New(
 		func() (interface{}, bool) {
 			if rp.Next() {
 				return rp.Value(), true

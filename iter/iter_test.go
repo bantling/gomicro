@@ -10,13 +10,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNewIter(t *testing.T) {
+func TestNew(t *testing.T) {
 	// Empty slice
-	iter := NewIter(ArraySliceIterFunc(reflect.ValueOf([]int{})))
+	iter := New(ArraySliceIterFunc(reflect.ValueOf([]int{})))
 	assert.False(t, iter.Next())
 
 	// Slice of 1 element
-	iter = NewIter(ArraySliceIterFunc(reflect.ValueOf([]int{1})))
+	iter = New(ArraySliceIterFunc(reflect.ValueOf([]int{1})))
 
 	assert.True(t, iter.Next())
 	assert.Equal(t, 1, iter.Value())

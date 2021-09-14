@@ -62,7 +62,7 @@ The Iter struct uses an iterating function to implement the iterator pattern in 
 
 == Constructors
 
-* NewIter accepts an iterating function
+* New accepts an iterating function
 * Of accepts a vararg of interface{} which is iterated using an ArraySliceIterFunc
 * OfFlatten accepts an array or slice which is flattened into one dimension via FlattenArraySlice and iterated using an ArraySliceIterFunc
 * OfElements accepts a single item which is iterated using an ElementsIterFunc

@@ -22,7 +22,7 @@ func TestFinisherTransform(t *testing.T) {
 	// Simple transform
 	f := New().AndThen().Transform(func() func(*iter.Iter) *iter.Iter {
 		return func(it *iter.Iter) *iter.Iter {
-			return iter.NewIter(func() (interface{}, bool) {
+			return iter.New(func() (interface{}, bool) {
 				if it.Next() {
 					return it.IntValue() * 2, true
 				}
@@ -38,7 +38,7 @@ func TestFinisherTransform(t *testing.T) {
 	// If the source set is an odd length, the last int is returned as is.
 	f = New().AndThen().Transform(func() func(it *iter.Iter) *iter.Iter {
 		return func(it *iter.Iter) *iter.Iter {
-			return iter.NewIter(func() (interface{}, bool) {
+			return iter.New(func() (interface{}, bool) {
 				var val1, val2 int
 
 				if !it.Next() {

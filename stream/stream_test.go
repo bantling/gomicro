@@ -17,7 +17,7 @@ import (
 func TestComposeTransforms(t *testing.T) {
 	var (
 		f1 = func(it *iter.Iter) *iter.Iter {
-			return iter.NewIter(
+			return iter.New(
 				func() (interface{}, bool) {
 					for it.Next() {
 						if val := it.Value(); val.(int) < 5 {
@@ -31,7 +31,7 @@ func TestComposeTransforms(t *testing.T) {
 		}
 
 		f2 = func(it *iter.Iter) *iter.Iter {
-			return iter.NewIter(
+			return iter.New(
 				func() (interface{}, bool) {
 					for it.Next() {
 						if val := it.Value(); val.(int) > 0 {
@@ -248,7 +248,7 @@ func TestStreamNew(t *testing.T) {
 func TestStreamTransform(t *testing.T) {
 	s := New().
 		Transform(func(it *iter.Iter) *iter.Iter {
-			return iter.NewIter(func() (interface{}, bool) {
+			return iter.New(func() (interface{}, bool) {
 				if it.Next() {
 					return it.IntValue() * 2, true
 				}

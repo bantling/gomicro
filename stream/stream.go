@@ -66,7 +66,7 @@ func IterateFunc(f interface{}) func(interface{}) interface{} {
 func Iterate(seed interface{}, f func(interface{}) interface{}) *iter.Iter {
 	nextValue := seed
 
-	return iter.NewIter(
+	return iter.New(
 		func() (interface{}, bool) {
 			retValue := nextValue
 			nextValue = f(nextValue)
@@ -140,7 +140,7 @@ func (s *Stream) Transform(t func(*iter.Iter) *iter.Iter) *Stream {
 func (s *Stream) Filter(f func(element interface{}) bool) *Stream {
 	return s.Transform(
 		func(it *iter.Iter) *iter.Iter {
-			return iter.NewIter(
+			return iter.New(
 				func() (interface{}, bool) {
 					for it.Next() {
 						if val := it.Value(); f(val) {
@@ -168,7 +168,7 @@ func (s *Stream) FilterNot(f func(element interface{}) bool) *Stream {
 func (s *Stream) Map(f func(element interface{}) interface{}) *Stream {
 	return s.Transform(
 		func(it *iter.Iter) *iter.Iter {
-			return iter.NewIter(
+			return iter.New(
 				func() (interface{}, bool) {
 					if it.Next() {
 						return f(it.Value()), true
@@ -185,7 +185,7 @@ func (s *Stream) Map(f func(element interface{}) interface{}) *Stream {
 func (s *Stream) Peek(f func(interface{})) *Stream {
 	return s.Transform(
 		func(it *iter.Iter) *iter.Iter {
-			return iter.NewIter(
+			return iter.New(
 				func() (interface{}, bool) {
 					if it.Next() {
 						val := it.Value()

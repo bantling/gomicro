@@ -316,7 +316,7 @@ func ToJSON(config ...JSONConfig) func() func(*iter.Iter) *iter.Iter {
 
 	return func() func(*iter.Iter) *iter.Iter {
 		return func(it *iter.Iter) *iter.Iter {
-			return iter.NewIter(func() (interface{}, bool) {
+			return iter.New(func() (interface{}, bool) {
 				if !it.Next() {
 					return nil, false
 				}
@@ -413,7 +413,7 @@ func FromArraySlice() func(*iter.Iter) *iter.Iter {
 			sz         = 0
 		)
 
-		return iter.NewIter(func() (interface{}, bool) {
+		return iter.New(func() (interface{}, bool) {
 			// Search for next non-empty array or slice, if we need to
 			for (n == sz) && it.Next() {
 				arraySlice = reflect.ValueOf(it.Value())
