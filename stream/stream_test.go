@@ -67,7 +67,7 @@ func TestIterateFunc(t *testing.T) {
 		assert.Equal(t, 2, it.NextIntValue())
 		assert.Equal(t, 2, it.NextIntValue())
 
-		fin := New().AndThen().Limit(3)
+		fin := NewFinisher().Limit(3)
 		assert.Equal(t, []int{2, 2, 2}, fin.ToSliceOf(0, it))
 	}
 
@@ -86,7 +86,7 @@ func TestIterateFunc(t *testing.T) {
 		assert.Equal(t, 2, it.NextIntValue())
 		assert.Equal(t, 2, it.NextIntValue())
 
-		fin := New().AndThen().Limit(3)
+		fin := NewFinisher().Limit(3)
 		assert.Equal(t, []int{2, 2, 2}, fin.ToSliceOf(0, it))
 	}
 
@@ -110,7 +110,7 @@ func TestIterateFunc(t *testing.T) {
 		assert.Equal(t, 3, it.NextIntValue())
 
 		it = Iterate(0, iterFunc)
-		fin := New().AndThen().Limit(3)
+		fin := NewFinisher().Limit(3)
 		assert.Equal(t, []int{0, 1, 2}, fin.ToSliceOf(0, it))
 	}
 
@@ -158,13 +158,13 @@ func TestIterateFunc(t *testing.T) {
 		f = g()
 		iterFunc = IterateFunc(f)
 		it = Iterate(0, iterFunc)
-		fin := New().AndThen().Limit(6)
+		fin := NewFinisher().Limit(6)
 		assert.Equal(t, []int{0, 1, 1, 2, 3, 5}, fin.ToSliceOf(0, it))
 
 		f = g()
 		iterFunc = IterateFunc(f)
 		it = Iterate(0, iterFunc)
-		fin = New().AndThen().Skip(2).Limit(6)
+		fin = NewFinisher().Skip(2).Limit(6)
 		assert.Equal(t, []int{1, 2, 3, 5, 8, 13}, fin.ToSliceOf(0, it))
 	}
 
@@ -324,7 +324,7 @@ func TestStreamIter(t *testing.T) {
 }
 
 func TestStreamAndThen(t *testing.T) {
-	f := New().AndThen()
+	f := NewFinisher()
 	assert.Equal(t, []interface{}{}, f.Iter(iter.Of()).ToSlice())
 	assert.Equal(t, []interface{}{1}, f.Iter(iter.Of(1)).ToSlice())
 }

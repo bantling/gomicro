@@ -39,6 +39,15 @@ type Finisher struct {
 }
 
 //
+// ==== Constructors
+//
+
+// NewFinisher constructs a new Finisher
+func NewFinisher() *Finisher {
+	return &Finisher{stream: New()}
+}
+
+//
 // ==== Transforms
 //
 

@@ -20,7 +20,7 @@ import (
 
 func TestFinisherTransform(t *testing.T) {
 	// Simple transform
-	f := New().AndThen().Transform(func() func(*iter.Iter) *iter.Iter {
+	f := NewFinisher().Transform(func() func(*iter.Iter) *iter.Iter {
 		return func(it *iter.Iter) *iter.Iter {
 			return iter.New(func() (interface{}, bool) {
 				if it.Next() {
@@ -36,7 +36,7 @@ func TestFinisherTransform(t *testing.T) {
 
 	// Add pairs of ints to produce a new set of ints that is half the size.
 	// If the source set is an odd length, the last int is returned as is.
-	f = New().AndThen().Transform(func() func(it *iter.Iter) *iter.Iter {
+	f = NewFinisher().Transform(func() func(it *iter.Iter) *iter.Iter {
 		return func(it *iter.Iter) *iter.Iter {
 			return iter.New(func() (interface{}, bool) {
 				var val1, val2 int
@@ -62,7 +62,7 @@ func TestFinisherTransform(t *testing.T) {
 	assert.Equal(t, []interface{}{3, 7}, f.ToSlice(iter.Of(1, 2, 3, 4)))
 
 	// Reader of bytes that are valid json arrays, exploded to their elements
-	f = New().AndThen().Transform(ToJSON()).Transform(FromArraySlice)
+	f = NewFinisher().Transform(ToJSON()).Transform(FromArraySlice)
 	assert.Equal(
 		t,
 		[]interface{}{},
@@ -83,7 +83,7 @@ func TestFinisherTransform(t *testing.T) {
 }
 
 func TestFinisherDistinct(t *testing.T) {
-	f := New().AndThen().Distinct()
+	f := NewFinisher().Distinct()
 	assert.Equal(t, []interface{}{}, f.Iter(iter.Of()).ToSlice())
 	assert.Equal(t, []interface{}{1}, f.Iter(iter.Of(1)).ToSlice())
 	assert.Equal(t, []interface{}{1, 2}, f.Iter(iter.Of(1, 1, 2)).ToSlice())
@@ -91,7 +91,7 @@ func TestFinisherDistinct(t *testing.T) {
 }
 
 func TestFinisherDuplicate(t *testing.T) {
-	f := New().AndThen().Duplicate()
+	f := NewFinisher().Duplicate()
 	assert.Equal(t, []interface{}{}, f.Iter(iter.Of()).ToSlice())
 	assert.Equal(t, []interface{}{}, f.Iter(iter.Of(1)).ToSlice())
 	assert.Equal(t, []interface{}{1}, f.Iter(iter.Of(1, 1, 2)).ToSlice())
@@ -99,7 +99,7 @@ func TestFinisherDuplicate(t *testing.T) {
 }
 
 func TestFinisherFilter(t *testing.T) {
-	f := New().AndThen().Filter(func() func(element interface{}) bool {
+	f := NewFinisher().Filter(func() func(element interface{}) bool {
 		return func(element interface{}) bool {
 			return element.(int) < 3
 		}
@@ -109,7 +109,7 @@ func TestFinisherFilter(t *testing.T) {
 }
 
 func TestFinisherFilterNot(t *testing.T) {
-	f := New().AndThen().FilterNot(func() func(element interface{}) bool {
+	f := NewFinisher().FilterNot(func() func(element interface{}) bool {
 		return func(element interface{}) bool {
 			return element.(int) < 3
 		}
@@ -119,19 +119,19 @@ func TestFinisherFilterNot(t *testing.T) {
 }
 
 func TestFinisherLimit(t *testing.T) {
-	f := New().AndThen().Limit(2)
+	f := NewFinisher().Limit(2)
 	assert.Equal(t, []interface{}{}, f.Iter(iter.Of()).ToSlice())
 	assert.Equal(t, []interface{}{1, 2}, f.Iter(iter.Of(1, 2, 3)).ToSlice())
 }
 
 func TestFinisherReverseSort(t *testing.T) {
-	f := New().AndThen().ReverseSort(funcs.IntSortFunc)
+	f := NewFinisher().ReverseSort(funcs.IntSortFunc)
 	assert.Equal(t, []interface{}{}, f.Iter(iter.Of()).ToSlice())
 	assert.Equal(t, []interface{}{3, 2, 1}, f.Iter(iter.Of(2, 3, 1)).ToSlice())
 }
 
 func TestFinisherSkip(t *testing.T) {
-	f := New().AndThen().Skip(2)
+	f := NewFinisher().Skip(2)
 	assert.Equal(t, []interface{}{}, f.Iter(iter.Of()).ToSlice())
 	assert.Equal(t, []interface{}{}, f.Iter(iter.Of(1)).ToSlice())
 	assert.Equal(t, []interface{}{}, f.Iter(iter.Of(1, 2)).ToSlice())
@@ -140,7 +140,7 @@ func TestFinisherSkip(t *testing.T) {
 }
 
 func TestFinisherSort(t *testing.T) {
-	f := New().AndThen().Sort(funcs.IntSortFunc)
+	f := NewFinisher().Sort(funcs.IntSortFunc)
 	assert.Equal(t, []interface{}{}, f.Iter(iter.Of()).ToSlice())
 	assert.Equal(t, []interface{}{1, 2, 3}, f.Iter(iter.Of(2, 3, 1)).ToSlice())
 }
@@ -148,14 +148,14 @@ func TestFinisherSort(t *testing.T) {
 // ==== Terminals
 
 func TestFinisherIter(t *testing.T) {
-	f := New().AndThen()
+	f := NewFinisher()
 	assert.Equal(t, []interface{}{}, f.Iter(iter.Of()).ToSlice())
 	assert.Equal(t, []interface{}{1, 2, 3}, f.Iter(iter.Of(1, 2, 3)).ToSlice())
 }
 
 func TestFinisherAllMatch(t *testing.T) {
 	fn := func(element interface{}) bool { return element.(int) < 3 }
-	f := New().AndThen()
+	f := NewFinisher()
 	assert.True(t, f.AllMatch(fn, iter.Of()))
 	assert.True(t, f.AllMatch(fn, iter.Of(1, 2)))
 	assert.False(t, f.AllMatch(fn, iter.Of(1, 2, 3)))
@@ -163,27 +163,27 @@ func TestFinisherAllMatch(t *testing.T) {
 
 func TestFinisherAnyMatch(t *testing.T) {
 	fn := func(element interface{}) bool { return element.(int) < 3 }
-	f := New().AndThen()
+	f := NewFinisher()
 	assert.False(t, f.AnyMatch(fn, iter.Of()))
 	assert.True(t, f.AnyMatch(fn, iter.Of(1, 2)))
 	assert.False(t, f.AnyMatch(fn, iter.Of(3)))
 }
 
 func TestFinisherAverage(t *testing.T) {
-	f := New().AndThen()
+	f := NewFinisher()
 	assert.True(t, f.Average(iter.Of()).IsEmpty())
 	assert.Equal(t, 1.5, f.Average(iter.Of(1, 2)).MustGet())
 	assert.Equal(t, 3.0, f.Average(iter.Of(3)).MustGet())
 }
 
 func TestFinisherCount(t *testing.T) {
-	f := New().AndThen()
+	f := NewFinisher()
 	assert.Equal(t, 0, f.Count(iter.Of()))
 	assert.Equal(t, 2, f.Count(iter.Of(1, 2)))
 }
 
 func TestFinisherFirst(t *testing.T) {
-	f := New().AndThen()
+	f := NewFinisher()
 	assert.Equal(t, 1, f.First(iter.Of(1, 2, 3)).MustGet())
 
 	f = New().Filter(func(v interface{}) bool { return v.(int) > 2 }).AndThen()
@@ -195,7 +195,7 @@ func TestFinisherForEach(t *testing.T) {
 	fn := func(element interface{}) {
 		elements = append(elements, element)
 	}
-	f := New().AndThen()
+	f := NewFinisher()
 	f.ForEach(fn, iter.Of())
 	assert.Equal(t, []interface{}(nil), elements)
 
@@ -212,21 +212,21 @@ func TestFinisherGroupBy(t *testing.T) {
 	fn := func(element interface{}) (key interface{}) {
 		return element.(int) % 3
 	}
-	f := New().AndThen()
+	f := NewFinisher()
 	assert.Equal(t, map[interface{}][]interface{}{}, f.GroupBy(fn, iter.Of()))
 	assert.Equal(t, map[interface{}][]interface{}{0: {0}}, f.GroupBy(fn, iter.Of(0)))
 	assert.Equal(t, map[interface{}][]interface{}{0: {0}, 1: {1, 4}}, f.GroupBy(fn, iter.Of(0, 1, 4)))
 }
 
 func TestFinisherLast(t *testing.T) {
-	f := New().AndThen()
+	f := NewFinisher()
 	assert.True(t, f.Last(iter.Of()).IsEmpty())
 	assert.Equal(t, 1, f.Last(iter.Of(1)).MustGet())
 	assert.Equal(t, 2, f.Last(iter.Of(1, 2)).MustGet())
 }
 
 func TestFinisherMax(t *testing.T) {
-	f := New().AndThen()
+	f := NewFinisher()
 	assert.True(t, f.Max(funcs.IntSortFunc, iter.Of()).IsEmpty())
 	assert.Equal(t, 1, f.Max(funcs.IntSortFunc, iter.Of(1)).MustGet())
 	assert.Equal(t, 2, f.Max(funcs.IntSortFunc, iter.Of(1, 2)).MustGet())
@@ -234,7 +234,7 @@ func TestFinisherMax(t *testing.T) {
 }
 
 func TestFinisherMin(t *testing.T) {
-	f := New().AndThen()
+	f := NewFinisher()
 	assert.True(t, f.Min(funcs.IntSortFunc, iter.Of()).IsEmpty())
 	assert.Equal(t, 1, f.Min(funcs.IntSortFunc, iter.Of(1)).MustGet())
 	assert.Equal(t, 2, f.Min(funcs.IntSortFunc, iter.Of(2, 3)).MustGet())
@@ -243,7 +243,7 @@ func TestFinisherMin(t *testing.T) {
 
 func TestFinisherNoneMatch(t *testing.T) {
 	fn := func(element interface{}) bool { return element.(int) < 3 }
-	f := New().AndThen()
+	f := NewFinisher()
 	assert.True(t, f.NoneMatch(fn, iter.Of()))
 	assert.True(t, f.NoneMatch(fn, iter.Of(3, 4)))
 	assert.False(t, f.NoneMatch(fn, iter.Of(1, 2, 3)))
@@ -253,13 +253,13 @@ func TestFinisherReduce(t *testing.T) {
 	fn := func(accumulator, element2 interface{}) interface{} {
 		return accumulator.(int) + element2.(int)
 	}
-	f := New().AndThen()
+	f := NewFinisher()
 	assert.Equal(t, 0, f.Reduce(0, fn, iter.Of()))
 	assert.Equal(t, 7, f.Reduce(1, fn, iter.Of(1, 2, 3)))
 }
 
 func TestFinisherSum(t *testing.T) {
-	f := New().AndThen()
+	f := NewFinisher()
 
 	// Float64
 	assert.True(t, f.Sum(iter.Of()).IsEmpty())
@@ -278,7 +278,7 @@ func TestFinisherToMap(t *testing.T) {
 	fn := func(element interface{}) (k interface{}, v interface{}) {
 		return element, strconv.Itoa(element.(int))
 	}
-	f := New().AndThen()
+	f := NewFinisher()
 	assert.Equal(t, map[interface{}]interface{}{}, f.ToMap(fn, iter.Of()))
 	assert.Equal(t, map[interface{}]interface{}{1: "1"}, f.ToMap(fn, iter.Of(1)))
 	assert.Equal(t, map[interface{}]interface{}{1: "1", 2: "2", 3: "3"}, f.ToMap(fn, iter.Of(1, 2, 3)))
@@ -288,26 +288,26 @@ func TestFinisherToMapOf(t *testing.T) {
 	fn := func(element interface{}) (k interface{}, v interface{}) {
 		return element, strconv.Itoa(element.(int))
 	}
-	f := New().AndThen()
+	f := NewFinisher()
 	assert.Equal(t, map[int]string{}, f.ToMapOf(fn, 0, "0", iter.Of()))
 	assert.Equal(t, map[int]string{1: "1"}, f.ToMapOf(fn, 0, "0", iter.Of(1)))
 	assert.Equal(t, map[int]string{1: "1", 2: "2", 3: "3"}, f.ToMapOf(fn, 0, "0", iter.Of(1, 2, 3)))
 }
 
 func TestFinisherToSlice(t *testing.T) {
-	f := New().AndThen()
+	f := NewFinisher()
 	assert.Equal(t, []interface{}{}, f.ToSlice(iter.Of()))
 	assert.Equal(t, []interface{}{1, 2}, f.ToSlice(iter.Of(1, 2)))
 }
 
 func TestFinisherToSliceOf(t *testing.T) {
-	f := New().AndThen()
+	f := NewFinisher()
 	assert.Equal(t, []int{}, f.ToSliceOf(0, iter.Of()))
 	assert.Equal(t, []int{1, 2}, f.ToSliceOf(0, iter.Of(1, 2)))
 }
 
 func TestToByteWriter(t *testing.T) {
-	f := New().AndThen()
+	f := NewFinisher()
 	buf := &bytes.Buffer{}
 
 	buf.Reset()
@@ -360,7 +360,7 @@ func TestToByteWriter(t *testing.T) {
 }
 
 func TestToRuneWriter(t *testing.T) {
-	f := New().AndThen()
+	f := NewFinisher()
 	buf := &bytes.Buffer{}
 
 	buf.Reset()
@@ -419,11 +419,11 @@ func TestToRuneWriter(t *testing.T) {
 // ==== Continuation
 
 func TestFinisherStream(t *testing.T) {
-	s := New().AndThen().AndThen()
+	s := NewFinisher().AndThen()
 	assert.Equal(t, []interface{}{}, s.Iter(iter.Of()).ToSlice())
 	assert.Equal(t, []interface{}{1, 2}, s.Iter(iter.Of(1, 2)).ToSlice())
 
-	s = New().AndThen().AndThen(ParallelConfig{})
+	s = NewFinisher().AndThen(ParallelConfig{})
 	assert.Equal(t, []interface{}{}, s.Iter(iter.Of()).ToSlice())
 	assert.Equal(t, []interface{}{1, 2}, s.Iter(iter.Of(1, 2)).ToSlice())
 }
@@ -473,11 +473,11 @@ func TestParallel(t *testing.T) {
 	// transform?, finisher?
 
 	// 00
-	f := New().AndThen()
+	f := NewFinisher()
 	assert.Equal(t, all, f.ToSliceOf(0, itgen(), ParallelConfig{}))
 
 	// 01
-	f = New().AndThen().Distinct()
+	f = NewFinisher().Distinct()
 	assert.Equal(t, distinct, f.ToSliceOf(0, itgen(), ParallelConfig{}))
 
 	// 10

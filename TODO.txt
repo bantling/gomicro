@@ -1,3 +1,3 @@
-- Add NewFinisher constructor
+- Do Stream or Finisher actually need to be pointers?
 - Test all usages of defer that are not nested in a func(), they may not be working
 - Makefile shd use go install instead of go get
