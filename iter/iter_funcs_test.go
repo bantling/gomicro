@@ -107,7 +107,7 @@ func TestArraySliceIterFunc(t *testing.T) {
 	assert.False(t, next)
 
 	// Non-array/slice
-	{
+	func() {
 		defer func() {
 			assert.Equal(t, ErrArraySliceIterFuncArg, recover())
 		}()
@@ -115,7 +115,7 @@ func TestArraySliceIterFunc(t *testing.T) {
 		ArraySliceIterFunc(reflect.ValueOf(1))
 
 		assert.Fail(t, "Must panic on non-array/slice")
-	}
+	}()
 }
 
 func TestMapIterFunc(t *testing.T) {
@@ -165,7 +165,7 @@ func TestMapIterFunc(t *testing.T) {
 	assert.False(t, next)
 
 	// Non-map
-	{
+	func() {
 		defer func() {
 			assert.Equal(t, ErrMapIterFuncArg, recover())
 		}()
@@ -173,7 +173,7 @@ func TestMapIterFunc(t *testing.T) {
 		MapIterFunc(reflect.ValueOf(1))
 
 		assert.Fail(t, "Must panic on non-map")
-	}
+	}()
 }
 
 func TestNoValueIterFunc(t *testing.T) {

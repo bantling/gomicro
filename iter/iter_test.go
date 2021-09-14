@@ -44,14 +44,14 @@ func TestOf(t *testing.T) {
 
 	// Test semantics of Next and Value
 	iter = Of(1, 2)
-	{
+	func() {
 		defer func() {
 			assert.Equal(t, ErrValueNextFirst, recover())
 		}()
 
 		iter.Value()
 		assert.Fail(t, "Must panic")
-	}
+	}()
 
 	assert.True(t, iter.Next())
 	assert.True(t, iter.Next())
@@ -63,14 +63,15 @@ func TestOf(t *testing.T) {
 
 	assert.False(t, iter.Next())
 	assert.False(t, iter.Next())
-	{
+
+	func() {
 		defer func() {
 			assert.Equal(t, ErrValueExhaustedIter, recover())
 		}()
 
 		iter.Value()
 		assert.Fail(t, "Must panic")
-	}
+	}()
 }
 
 func TestOfFlatten(t *testing.T) {
@@ -468,14 +469,14 @@ func TestUnread(t *testing.T) {
 	assert.False(t, iter.Next())
 
 	// Unreading doesn't affect panic on exhausted iter
-	{
+	func() {
 		defer func() {
 			assert.Equal(t, ErrValueExhaustedIter, recover())
 		}()
 
 		iter.Value()
 		assert.Fail(t, "Must die")
-	}
+	}()
 }
 
 func TestSplitIntoRows(t *testing.T) {
@@ -486,27 +487,27 @@ func TestSplitIntoRows(t *testing.T) {
 	)
 	assert.Equal(t, [][]interface{}{}, split)
 
-	{
+	func() {
 		defer func() {
 			assert.Equal(t, ErrValueExhaustedIter, recover())
 		}()
 
 		iter.Value()
 		assert.Fail(t, "Must panic")
-	}
+	}()
 
 	iter = Of(1)
 	split = iter.SplitIntoRows(5)
 	assert.Equal(t, [][]interface{}{{1}}, split)
 
-	{
+	func() {
 		defer func() {
 			assert.Equal(t, ErrValueExhaustedIter, recover())
 		}()
 
 		iter.Value()
 		assert.Fail(t, "Must panic")
-	}
+	}()
 
 	iter = Of(1, 2, 3, 4)
 	split = iter.SplitIntoRows(5)
@@ -533,41 +534,41 @@ func TestSplitIntoRows(t *testing.T) {
 	split = iter.SplitIntoRows(1)
 	assert.Equal(t, [][]interface{}{}, split)
 
-	{
+	func() {
 		defer func() {
 			assert.Equal(t, ErrValueExhaustedIter, recover())
 		}()
 
 		iter.Value()
 		assert.Fail(t, "Must panic")
-	}
+	}()
 
 	iter = Of(1)
 	split = iter.SplitIntoRows(1)
 	assert.Equal(t, [][]interface{}{{1}}, split)
 
-	{
+	func() {
 		defer func() {
 			assert.Equal(t, ErrValueExhaustedIter, recover())
 		}()
 
 		iter.Value()
 		assert.Fail(t, "Must panic")
-	}
+	}()
 
 	iter = Of(1, 2)
 	split = iter.SplitIntoRows(1)
 	assert.Equal(t, [][]interface{}{{1}, {2}}, split)
 
 	// Die if n < 1
-	{
+	func() {
 		defer func() {
 			assert.Equal(t, ErrColsGreaterThanZero, recover())
 		}()
 
 		iter.SplitIntoRows(0)
 		assert.Fail(t, "Must panic")
-	}
+	}()
 }
 
 func TestSplitIntoRowsOf(t *testing.T) {
@@ -578,27 +579,27 @@ func TestSplitIntoRowsOf(t *testing.T) {
 	)
 	assert.Equal(t, [][]int{}, split)
 
-	{
+	func() {
 		defer func() {
 			assert.Equal(t, ErrValueExhaustedIter, recover())
 		}()
 
 		iter.Value()
 		assert.Fail(t, "Must panic")
-	}
+	}()
 
 	iter = Of(1)
 	split = iter.SplitIntoRowsOf(5, 0)
 	assert.Equal(t, [][]int{{1}}, split)
 
-	{
+	func() {
 		defer func() {
 			assert.Equal(t, ErrValueExhaustedIter, recover())
 		}()
 
 		iter.Value()
 		assert.Fail(t, "Must panic")
-	}
+	}()
 
 	iter = Of(1, 2, 3, 4)
 	split = iter.SplitIntoRowsOf(5, 0)
@@ -630,51 +631,51 @@ func TestSplitIntoRowsOf(t *testing.T) {
 	split = iter.SplitIntoRowsOf(1, 0)
 	assert.Equal(t, [][]int{}, split)
 
-	{
+	func() {
 		defer func() {
 			assert.Equal(t, ErrValueExhaustedIter, recover())
 		}()
 
 		iter.Value()
 		assert.Fail(t, "Must panic")
-	}
+	}()
 
 	iter = Of(1)
 	split = iter.SplitIntoRowsOf(1, 0)
 	assert.Equal(t, [][]int{{1}}, split)
 
-	{
+	func() {
 		defer func() {
 			assert.Equal(t, ErrValueExhaustedIter, recover())
 		}()
 
 		iter.Value()
 		assert.Fail(t, "Must panic")
-	}
+	}()
 
 	iter = Of(1, 2)
 	split = iter.SplitIntoRowsOf(1, 0)
 	assert.Equal(t, [][]int{{1}, {2}}, split)
 
 	// Die if n < 1
-	{
+	func() {
 		defer func() {
 			assert.Equal(t, ErrColsGreaterThanZero, recover())
 		}()
 
 		iter.SplitIntoRowsOf(0, 0)
 		assert.Fail(t, "Must panic")
-	}
+	}()
 
 	// Die if value is nil
-	{
+	func() {
 		defer func() {
 			assert.Equal(t, ErrValueCannotBeNil, recover())
 		}()
 
 		iter.SplitIntoRowsOf(1, nil)
 		assert.Fail(t, "Must panic")
-	}
+	}()
 }
 
 func TestSplitIntoColumns(t *testing.T) {
@@ -685,27 +686,27 @@ func TestSplitIntoColumns(t *testing.T) {
 	)
 	assert.Equal(t, [][]interface{}{}, split)
 
-	{
+	func() {
 		defer func() {
 			assert.Equal(t, ErrValueExhaustedIter, recover())
 		}()
 
 		iter.Value()
 		assert.Fail(t, "Must panic")
-	}
+	}()
 
 	iter = Of(1)
 	split = iter.SplitIntoColumns(5)
 	assert.Equal(t, [][]interface{}{{1}}, split)
 
-	{
+	func() {
 		defer func() {
 			assert.Equal(t, ErrValueExhaustedIter, recover())
 		}()
 
 		iter.Value()
 		assert.Fail(t, "Must panic")
-	}
+	}()
 
 	iter = Of(1, 2, 3, 4)
 	split = iter.SplitIntoColumns(5)
@@ -732,41 +733,41 @@ func TestSplitIntoColumns(t *testing.T) {
 	split = iter.SplitIntoColumns(1)
 	assert.Equal(t, [][]interface{}{}, split)
 
-	{
+	func() {
 		defer func() {
 			assert.Equal(t, ErrValueExhaustedIter, recover())
 		}()
 
 		iter.Value()
 		assert.Fail(t, "Must panic")
-	}
+	}()
 
 	iter = Of(1)
 	split = iter.SplitIntoColumns(1)
 	assert.Equal(t, [][]interface{}{{1}}, split)
 
-	{
+	func() {
 		defer func() {
 			assert.Equal(t, ErrValueExhaustedIter, recover())
 		}()
 
 		iter.Value()
 		assert.Fail(t, "Must panic")
-	}
+	}()
 
 	iter = Of(1, 2)
 	split = iter.SplitIntoColumns(1)
 	assert.Equal(t, [][]interface{}{{1, 2}}, split)
 
 	// Die if n < 1
-	{
+	func() {
 		defer func() {
 			assert.Equal(t, ErrRowsGreaterThanZero, recover())
 		}()
 
 		iter.SplitIntoColumns(0)
 		assert.Fail(t, "Must panic")
-	}
+	}()
 }
 
 func TestSplitIntoColumnsOf(t *testing.T) {
@@ -777,27 +778,27 @@ func TestSplitIntoColumnsOf(t *testing.T) {
 	)
 	assert.Equal(t, [][]int{}, split)
 
-	{
+	func() {
 		defer func() {
 			assert.Equal(t, ErrValueExhaustedIter, recover())
 		}()
 
 		iter.Value()
 		assert.Fail(t, "Must panic")
-	}
+	}()
 
 	iter = Of(1)
 	split = iter.SplitIntoColumnsOf(5, 0)
 	assert.Equal(t, [][]int{{1}}, split)
 
-	{
+	func() {
 		defer func() {
 			assert.Equal(t, ErrValueExhaustedIter, recover())
 		}()
 
 		iter.Value()
 		assert.Fail(t, "Must panic")
-	}
+	}()
 
 	iter = Of(1, 2, 3, 4)
 	split = iter.SplitIntoColumnsOf(5, 0)
@@ -829,51 +830,51 @@ func TestSplitIntoColumnsOf(t *testing.T) {
 	split = iter.SplitIntoColumnsOf(1, 0)
 	assert.Equal(t, [][]int{}, split)
 
-	{
+	func() {
 		defer func() {
 			assert.Equal(t, ErrValueExhaustedIter, recover())
 		}()
 
 		iter.Value()
 		assert.Fail(t, "Must panic")
-	}
+	}()
 
 	iter = Of(1)
 	split = iter.SplitIntoColumnsOf(1, 0)
 	assert.Equal(t, [][]int{{1}}, split)
 
-	{
+	func() {
 		defer func() {
 			assert.Equal(t, ErrValueExhaustedIter, recover())
 		}()
 
 		iter.Value()
 		assert.Fail(t, "Must panic")
-	}
+	}()
 
 	iter = Of(1, 2)
 	split = iter.SplitIntoColumnsOf(1, 0)
 	assert.Equal(t, [][]int{{1, 2}}, split)
 
 	// Die if n < 1
-	{
+	func() {
 		defer func() {
 			assert.Equal(t, ErrRowsGreaterThanZero, recover())
 		}()
 
 		iter.SplitIntoColumnsOf(0, 0)
 		assert.Fail(t, "Must panic")
-	}
+	}()
 
 	// Die if value is nil
-	{
+	func() {
 		defer func() {
 			assert.Equal(t, ErrValueCannotBeNil, recover())
 		}()
 
 		iter.SplitIntoColumnsOf(1, nil)
 		assert.Fail(t, "Must panic")
-	}
+	}()
 }
 
 func TestToReader(t *testing.T) {
@@ -961,14 +962,14 @@ func TestToSlice(t *testing.T) {
 
 	iter := Of()
 	iter.ToSlice()
-	{
+	func() {
 		defer func() {
 			assert.Equal(t, ErrValueExhaustedIter, recover())
 		}()
 
 		iter.Value()
 		assert.Fail(t, "Must panic")
-	}
+	}()
 }
 
 func TestToSliceOf(t *testing.T) {
@@ -978,14 +979,14 @@ func TestToSliceOf(t *testing.T) {
 
 	iter := Of()
 	iter.ToSliceOf(0)
-	{
+	func() {
 		defer func() {
 			assert.Equal(t, ErrValueExhaustedIter, recover())
 		}()
 
 		iter.Value()
 		assert.Fail(t, "Must panic")
-	}
+	}()
 }
 
 func TestForLoop(t *testing.T) {
@@ -1003,14 +1004,14 @@ func TestForLoop(t *testing.T) {
 
 		assert.Equal(t, 2, idx)
 
-		{
+		func() {
 			defer func() {
 				assert.Equal(t, ErrValueExhaustedIter, recover())
 			}()
 
 			iter.Value()
 			assert.Fail(t, "Must panic")
-		}
+		}()
 	}
 
 	{
@@ -1027,13 +1028,13 @@ func TestForLoop(t *testing.T) {
 
 		assert.Equal(t, 2, idx)
 
-		{
+		func() {
 			defer func() {
 				assert.Equal(t, ErrValueExhaustedIter, recover())
 			}()
 
 			iter.Value()
 			assert.Fail(t, "Must panic")
-		}
+		}()
 	}
 }
