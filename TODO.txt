@@ -1,1 +1,13 @@
-- Makefile shd use go install instead of go get
+- Make a FromJSON(typ interface{}) func that maps a JSONmap[string]interface{} element to a struct
+- Make a simple REST muxer that sits on top of http.ServeMux
+- Make a simple column based ORM that expects a struct where each field is a func
+  - func name indicates what it does
+  - eg, Save(struct), Delete(struct), DeleteById(id), struct Read(id)
+  - name can be parseable like Spring data (simpler spec)
+    - eg, FindByFirstNameOrderByLastNameDesc(firstName string)
+    - more complex case:
+      Customer(FirstName, LastName) contains multiple Address(Line, City, Region, Country)
+      FindByFirstName_Address_City_OrderBy_Address_Region_LastNameDesc(firstName, city string)
+      - select from customer c join address a on c.id = address.customerId 
+         where customer.firstName and address.city match args
+- Make a simple JSON based ORM that works similarly, assuming each child json object is merged into parent with a key
