@@ -1,4 +1,3 @@
-- Make a FromJSON(typ interface{}) func that maps a JSONmap[string]interface{} element to a struct
 - Make a simple REST muxer that sits on top of http.ServeMux
 - Make a simple column based ORM that expects a struct where each field is a func
   - func name indicates what it does

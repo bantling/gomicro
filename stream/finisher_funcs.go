@@ -403,8 +403,8 @@ func ToJSON(config ...JSONConfig) func() func(*iter.Iter) *iter.Iter {
 	}
 }
 
-// FromArraySlice is a SetMap function that maps each source array or slice into their elements.
-// Panics if the elements are npot arrays or slices.
+// FromArraySlice is a Transform function that maps each source array or slice into their elements.
+// Panics if the elements are not arrays or slices.
 func FromArraySlice() func(*iter.Iter) *iter.Iter {
 	return func(it *iter.Iter) *iter.Iter {
 		var (

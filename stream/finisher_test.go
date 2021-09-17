@@ -80,6 +80,31 @@ func TestFinisherTransform(t *testing.T) {
 		[]interface{}{map[string]interface{}{"foo": "bar", "baz": json.Number("2"), "taz": true, "zat": nil}},
 		f.ToSlice(iter.OfReader(strings.NewReader(`[{"foo": "bar", "baz": 2, "taz": true, "zat": null}]`))),
 	)
+
+	// Reader of bytes that are valid json arrays, exploded to their elements as structs
+	type Person struct {
+		FirstName string
+		LastName  string
+		Age       int
+	}
+
+	f = NewFinisher().
+		Transform(ToJSON(JSONConfig{NumType: JSONNumAsInt64})).
+		Transform(FromArraySlice).
+		AndStream().
+		Map(MapToStruct(Person{})).
+		AndFinish()
+
+	assert.Equal(
+		t,
+		[]Person{
+			{FirstName: "Jane", LastName: "Doe", Age: 56},
+			{FirstName: "John", LastName: "Doe", Age: 65},
+		},
+		f.ToSliceOf(Person{}, iter.OfReader(strings.NewReader(
+			`[{"firstName": "Jane", "lastName": "Doe", "age": 56},{"firstName": "John", "lastName": "Doe", "age": 65}]`,
+		))),
+	)
 }
 
 func TestFinisherDistinct(t *testing.T) {
