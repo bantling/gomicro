@@ -3,6 +3,7 @@
 package stream
 
 import (
+	"math/big"
 	"reflect"
 	"testing"
 
@@ -117,6 +118,98 @@ func TestMapToStruct(t *testing.T) {
 				{FirstName: "John", LastName: "Doe", Other: UintString{IsMsg: false, Value: 1, Msg: ""}},
 				{FirstName: "John", LastName: "Doe", Other: UintString{IsMsg: false, Value: 2, Msg: ""}},
 				{FirstName: "John", LastName: "Doe", Other: UintString{IsMsg: true, Msg: "REDACTED"}},
+				{FirstName: "John", LastName: "Doe"},
+				{FirstName: "John", LastName: "Doe"},
+			}
+		)
+
+		for i, doc := range docs {
+			assert.Equal(t, MapToStruct(Person{})(doc), persons[i])
+		}
+	}
+
+	// FloatString decode hook
+	{
+		type Person struct {
+			FirstName string
+			LastName  string
+			Other     FloatString
+		}
+
+		var (
+			docs = []map[string]interface{}{
+				{"firstName": "John", "lastName": "Doe", "other": 1},
+				{"firstName": "John", "lastName": "Doe", "other": float64(2.25)},
+				{"firstName": "John", "lastName": "Doe", "other": "REDACTED"},
+				{"firstName": "John", "lastName": "Doe", "other": nil},
+				{"firstName": "John", "lastName": "Doe"},
+			}
+			persons = []Person{
+				{FirstName: "John", LastName: "Doe", Other: FloatString{IsMsg: false, Value: 1.0, Msg: ""}},
+				{FirstName: "John", LastName: "Doe", Other: FloatString{IsMsg: false, Value: 2.25, Msg: ""}},
+				{FirstName: "John", LastName: "Doe", Other: FloatString{IsMsg: true, Msg: "REDACTED"}},
+				{FirstName: "John", LastName: "Doe"},
+				{FirstName: "John", LastName: "Doe"},
+			}
+		)
+
+		for i, doc := range docs {
+			assert.Equal(t, MapToStruct(Person{})(doc), persons[i])
+		}
+	}
+
+	// BigIntString decode hook
+	{
+		type Person struct {
+			FirstName string
+			LastName  string
+			Other     BigIntString
+		}
+
+		var (
+			docs = []map[string]interface{}{
+				{"firstName": "John", "lastName": "Doe", "other": 1},
+				{"firstName": "John", "lastName": "Doe", "other": big.NewInt(2)},
+				{"firstName": "John", "lastName": "Doe", "other": "REDACTED"},
+				{"firstName": "John", "lastName": "Doe", "other": nil},
+				{"firstName": "John", "lastName": "Doe"},
+			}
+			persons = []Person{
+				{FirstName: "John", LastName: "Doe", Other: BigIntString{IsMsg: false, Value: big.NewInt(1), Msg: ""}},
+				{FirstName: "John", LastName: "Doe", Other: BigIntString{IsMsg: false, Value: big.NewInt(2), Msg: ""}},
+				{FirstName: "John", LastName: "Doe", Other: BigIntString{IsMsg: true, Msg: "REDACTED"}},
+				{FirstName: "John", LastName: "Doe"},
+				{FirstName: "John", LastName: "Doe"},
+			}
+		)
+
+		for i, doc := range docs {
+			assert.Equal(t, MapToStruct(Person{})(doc), persons[i])
+		}
+	}
+
+	// BigFloatString decode hook
+	{
+		type Person struct {
+			FirstName string
+			LastName  string
+			Other     BigFloatString
+		}
+
+		var (
+			docs = []map[string]interface{}{
+				{"firstName": "John", "lastName": "Doe", "other": 1.0},
+				{"firstName": "John", "lastName": "Doe", "other": big.NewInt(2)},
+				{"firstName": "John", "lastName": "Doe", "other": big.NewFloat(3.25)},
+				{"firstName": "John", "lastName": "Doe", "other": "REDACTED"},
+				{"firstName": "John", "lastName": "Doe", "other": nil},
+				{"firstName": "John", "lastName": "Doe"},
+			}
+			persons = []Person{
+				{FirstName: "John", LastName: "Doe", Other: BigFloatString{IsMsg: false, Value: big.NewFloat(1.0), Msg: ""}},
+				{FirstName: "John", LastName: "Doe", Other: BigFloatString{IsMsg: false, Value: big.NewFloat(2.0), Msg: ""}},
+				{FirstName: "John", LastName: "Doe", Other: BigFloatString{IsMsg: false, Value: big.NewFloat(3.25), Msg: ""}},
+				{FirstName: "John", LastName: "Doe", Other: BigFloatString{IsMsg: true, Msg: "REDACTED"}},
 				{FirstName: "John", LastName: "Doe"},
 				{FirstName: "John", LastName: "Doe"},
 			}

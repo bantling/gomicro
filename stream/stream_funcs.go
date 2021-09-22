@@ -39,9 +39,9 @@ type UintString struct {
 	Msg   string
 }
 
-// DoubleString represents a union of double and string, to allow double fields to be redacted.
+// FloatString represents a union of float64 and string, to allow float fields to be redacted.
 // IsMsg is false if the Value field is selected, true if the Msg field is selected.
-type DoubleString struct {
+type FloatString struct {
 	IsMsg bool
 	Value float64
 	Msg   string
@@ -177,12 +177,163 @@ func UintStringHookFunc() mapstructure.DecodeHookFunc {
 	}
 }
 
+// FloatStringHookFunc returns a DecodeHookFunc that converts values into FloatString.
+// The values are not any kind of int or uint or float or strings, they are ignored.
+func FloatStringHookFunc() mapstructure.DecodeHookFunc {
+	return func(
+		f reflect.Type,
+		t reflect.Type,
+		data interface{},
+	) (interface{}, error) {
+		if t == reflect.TypeOf(FloatString{}) {
+			switch f.Kind() {
+			case reflect.Int8:
+				return FloatString{IsMsg: false, Value: float64(data.(int8))}, nil
+			case reflect.Int16:
+				return FloatString{IsMsg: false, Value: float64(data.(int16))}, nil
+			case reflect.Int32:
+				return FloatString{IsMsg: false, Value: float64(data.(int32))}, nil
+			case reflect.Int64:
+				return FloatString{IsMsg: false, Value: float64(data.(int64))}, nil
+			case reflect.Int:
+				return FloatString{IsMsg: false, Value: float64(data.(int))}, nil
+
+			case reflect.Uint8:
+				return FloatString{IsMsg: false, Value: float64(data.(uint8))}, nil
+			case reflect.Uint16:
+				return FloatString{IsMsg: false, Value: float64(data.(uint16))}, nil
+			case reflect.Uint32:
+				return FloatString{IsMsg: false, Value: float64(data.(uint32))}, nil
+			case reflect.Uint64:
+				return FloatString{IsMsg: false, Value: float64(data.(uint64))}, nil
+			case reflect.Uint:
+				return FloatString{IsMsg: false, Value: float64(data.(uint))}, nil
+
+			case reflect.Float32:
+				return FloatString{IsMsg: false, Value: float64(data.(float32))}, nil
+			case reflect.Float64:
+				return FloatString{IsMsg: false, Value: data.(float64)}, nil
+
+			case reflect.String:
+				return FloatString{IsMsg: true, Msg: data.(string)}, nil
+			}
+		}
+
+		// Ignore everything except conversions from any kind of int or uint or string to FloatString
+		return data, nil
+	}
+}
+
+// BigIntStringHookFunc returns a DecodeHookFunc that converts values into *math/big.Int.
+// The values are not any kind of int or uint or *math/big.Int or strings, they are ignored.
+func BigIntStringHookFunc() mapstructure.DecodeHookFunc {
+	return func(
+		f reflect.Type,
+		t reflect.Type,
+		data interface{},
+	) (interface{}, error) {
+		if t == reflect.TypeOf(BigIntString{}) {
+			switch f.Kind() {
+			case reflect.Int8:
+				return BigIntString{IsMsg: false, Value: big.NewInt(int64(data.(int8)))}, nil
+			case reflect.Int16:
+				return BigIntString{IsMsg: false, Value: big.NewInt(int64(data.(int16)))}, nil
+			case reflect.Int32:
+				return BigIntString{IsMsg: false, Value: big.NewInt(int64(data.(int32)))}, nil
+			case reflect.Int64:
+				return BigIntString{IsMsg: false, Value: big.NewInt(int64(data.(int64)))}, nil
+			case reflect.Int:
+				return BigIntString{IsMsg: false, Value: big.NewInt(int64(data.(int)))}, nil
+
+			case reflect.Uint8:
+				return BigIntString{IsMsg: false, Value: big.NewInt(int64(data.(uint8)))}, nil
+			case reflect.Uint16:
+				return BigIntString{IsMsg: false, Value: big.NewInt(int64(data.(uint16)))}, nil
+			case reflect.Uint32:
+				return BigIntString{IsMsg: false, Value: big.NewInt(int64(data.(uint32)))}, nil
+			case reflect.Uint64:
+				return BigIntString{IsMsg: false, Value: big.NewInt(int64(data.(uint64)))}, nil
+			case reflect.Uint:
+				return BigIntString{IsMsg: false, Value: big.NewInt(int64(data.(uint)))}, nil
+
+			case reflect.String:
+				return BigIntString{IsMsg: true, Msg: data.(string)}, nil
+			}
+
+			if f == reflect.TypeOf((*big.Int)(nil)) {
+				return BigIntString{IsMsg: false, Value: data.(*big.Int)}, nil
+			}
+		}
+
+		// Ignore everything except conversions from any kind of int or uint or *Int or string to BigIntString
+		return data, nil
+	}
+}
+
+// BigFloatStringHookFunc returns a DecodeHookFunc that converts values into *math/big.Int.
+// The values are not any kind of int or uint or *math/big.Int or *math.Big/Float or strings, they are ignored.
+func BigFloatStringHookFunc() mapstructure.DecodeHookFunc {
+	return func(
+		f reflect.Type,
+		t reflect.Type,
+		data interface{},
+	) (interface{}, error) {
+		if t == reflect.TypeOf(BigFloatString{}) {
+			switch f.Kind() {
+			case reflect.Int8:
+				return BigFloatString{IsMsg: false, Value: big.NewFloat(float64(data.(int8)))}, nil
+			case reflect.Int16:
+				return BigFloatString{IsMsg: false, Value: big.NewFloat(float64(data.(int16)))}, nil
+			case reflect.Int32:
+				return BigFloatString{IsMsg: false, Value: big.NewFloat(float64(data.(int32)))}, nil
+			case reflect.Int64:
+				return BigFloatString{IsMsg: false, Value: big.NewFloat(float64(data.(int64)))}, nil
+			case reflect.Int:
+				return BigFloatString{IsMsg: false, Value: big.NewFloat(float64(data.(int)))}, nil
+
+			case reflect.Uint8:
+				return BigFloatString{IsMsg: false, Value: big.NewFloat(float64(data.(uint8)))}, nil
+			case reflect.Uint16:
+				return BigFloatString{IsMsg: false, Value: big.NewFloat(float64(data.(uint16)))}, nil
+			case reflect.Uint32:
+				return BigFloatString{IsMsg: false, Value: big.NewFloat(float64(data.(uint32)))}, nil
+			case reflect.Uint64:
+				return BigFloatString{IsMsg: false, Value: big.NewFloat(float64(data.(uint64)))}, nil
+			case reflect.Uint:
+				return BigFloatString{IsMsg: false, Value: big.NewFloat(float64(data.(uint)))}, nil
+
+			case reflect.Float32:
+				return BigFloatString{IsMsg: false, Value: big.NewFloat(float64(data.(float32)))}, nil
+			case reflect.Float64:
+				return BigFloatString{IsMsg: false, Value: big.NewFloat(data.(float64))}, nil
+
+			case reflect.String:
+				return BigFloatString{IsMsg: true, Msg: data.(string)}, nil
+			}
+
+			if f == reflect.TypeOf((*big.Int)(nil)) {
+				return BigFloatString{IsMsg: false, Value: big.NewFloat(0).SetInt(data.(*big.Int))}, nil
+			}
+
+			if f == reflect.TypeOf((*big.Float)(nil)) {
+				return BigFloatString{IsMsg: false, Value: data.(*big.Float)}, nil
+			}
+		}
+
+		// Ignore everything except conversions from any kind of int or uint or float or *Int or *Float or string to BigFloatString
+		return data, nil
+	}
+}
+
 // ComposedValueStringHookFunc is DecodeHookFunc that is a composition of all the above XStringHookFuncs.
 func ComposedValueStringHookFunc() mapstructure.DecodeHookFunc {
 	return mapstructure.ComposeDecodeHookFunc(
 		BoolStringHookFunc(),
 		IntStringHookFunc(),
 		UintStringHookFunc(),
+		FloatStringHookFunc(),
+		BigIntStringHookFunc(),
+		BigFloatStringHookFunc(),
 	)
 }
 
