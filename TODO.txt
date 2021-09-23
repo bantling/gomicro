@@ -1,11 +1,3 @@
-- Always squash embedded structs in MapToStruct function, test it
-- Make a mechanism for redacting fields
-  - Add types BoolString, IntString, UintString, FloatString, DoubleString, BigIntString, BigFloatString, StructString
-  - Each type has two Optionals, one for bool/int/..., one for string - at most one optional is present, both initially empty
-  - Use a mapstructure.DecodeHookFunc for each of above XString types
-  - Have to manually add the hookfuncs
-  - Create a single private Decoder instance that has all the hooks setup, reuse it on every decode operation
-  - Hooks have to be composed with ComposeDecodeHookFunc 
 - Make a simple REST muxer that sits on top of http.ServeMux
 - Make a simple column based ORM that expects a struct where each field is a func
   - func name indicates what it does
@@ -18,3 +10,4 @@
       - select from customer c join address a on c.id = address.customerId 
          where customer.firstName and address.city match args
 - Make a simple JSON based ORM that works similarly, assuming each child json object is merged into parent with a key
+- Update READMEs

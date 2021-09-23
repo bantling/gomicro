@@ -292,6 +292,21 @@ func TestStreamMap(t *testing.T) {
 	assert.Equal(t, []string{"2", "4"}, s.Iter(iter.Of(1, 2)).ToSliceOf(""))
 }
 
+func TestStreamMapIf(t *testing.T) {
+	test := func(element interface{}) bool {
+		return element.(int) > 3
+	}
+
+	fn := func(element interface{}) interface{} {
+		return element.(int) * 2
+	}
+
+	s := New().MapIf(test, fn)
+	assert.Equal(t, []interface{}{}, s.Iter(iter.Of()).ToSlice())
+	assert.Equal(t, []interface{}{2}, s.Iter(iter.Of(2)).ToSlice())
+	assert.Equal(t, []interface{}{2, 8}, s.Iter(iter.Of(2, 4)).ToSlice())
+}
+
 func TestStreamPeek(t *testing.T) {
 	var elements []interface{}
 	fn := func(element interface{}) {

@@ -11,7 +11,49 @@ import (
 )
 
 func TestMapToStruct(t *testing.T) {
-	// No decode hooks
+	// With/out squashing
+	{
+		type Address struct {
+			Line string
+			City string
+		}
+
+		type Person1 struct {
+			FirstName string
+			LastName  string
+			Age       int
+			Address   Address
+		}
+
+		type Person2 struct {
+			FirstName string
+			LastName  string
+			Age       int
+			Address
+		}
+
+		var (
+			addressMap    = map[string]interface{}{"line": "123 Sesame St", "city": "New York"}
+			personMap     = map[string]interface{}{"firstName": "John", "lastName": "Doe", "age": 56, "address": addressMap}
+			personFlatMap = map[string]interface{}{"firstName": "John", "lastName": "Doe", "age": 56, "line": "123 Sesame St", "city": "New York"}
+			address       = Address{Line: "123 Sesame St", City: "New York"}
+			person1       = Person1{FirstName: "John", LastName: "Doe", Age: 56, Address: address}
+			person2       = Person2{FirstName: "John", LastName: "Doe", Age: 56, Address: address}
+		)
+
+		// Address alone
+		assert.Equal(t, address, MapToStruct(Address{})(addressMap))
+
+		// Without squashing
+		assert.Equal(t, person1, MapToStruct(Person1{})(personMap))
+		assert.NotEqual(t, person1, MapToStruct(Person1{})(personFlatMap))
+
+		// With squashing
+		assert.NotEqual(t, person2, MapToStruct(Person2{})(personMap))
+		assert.Equal(t, person2, MapToStruct(Person2{})(personFlatMap))
+	}
+
+	// No decode hooks, with/out pointers
 	{
 		type Person struct {
 			FirstName string
@@ -28,16 +70,16 @@ func TestMapToStruct(t *testing.T) {
 		)
 
 		// Value
-		assert.Equal(t, MapToStruct(Person{})(doc), person)
+		assert.Equal(t, person, MapToStruct(Person{})(doc))
 
 		// 1 Pointer
-		assert.Equal(t, MapToStruct(&Person{})(doc), personPtr1)
+		assert.Equal(t, personPtr1, MapToStruct(&Person{})(doc))
 
 		// 2 Pointers
-		assert.Equal(t, MapToStruct(reflect.TypeOf((**Person)(nil)))(doc), personPtr2)
+		assert.Equal(t, personPtr2, MapToStruct(reflect.TypeOf((**Person)(nil)))(doc))
 
 		// 3 Pointers
-		assert.Equal(t, MapToStruct(reflect.TypeOf((***Person)(nil)))(doc), personPtr3)
+		assert.Equal(t, personPtr3, MapToStruct(reflect.TypeOf((***Person)(nil)))(doc))
 	}
 
 	// BoolString decode hook
@@ -64,7 +106,7 @@ func TestMapToStruct(t *testing.T) {
 		)
 
 		for i, doc := range docs {
-			assert.Equal(t, MapToStruct(Person{})(doc), persons[i])
+			assert.Equal(t, persons[i], MapToStruct(Person{})(doc))
 		}
 	}
 
@@ -94,7 +136,7 @@ func TestMapToStruct(t *testing.T) {
 		)
 
 		for i, doc := range docs {
-			assert.Equal(t, MapToStruct(Person{})(doc), persons[i])
+			assert.Equal(t, persons[i], MapToStruct(Person{})(doc))
 		}
 	}
 
@@ -124,7 +166,7 @@ func TestMapToStruct(t *testing.T) {
 		)
 
 		for i, doc := range docs {
-			assert.Equal(t, MapToStruct(Person{})(doc), persons[i])
+			assert.Equal(t, persons[i], MapToStruct(Person{})(doc))
 		}
 	}
 
@@ -154,7 +196,7 @@ func TestMapToStruct(t *testing.T) {
 		)
 
 		for i, doc := range docs {
-			assert.Equal(t, MapToStruct(Person{})(doc), persons[i])
+			assert.Equal(t, persons[i], MapToStruct(Person{})(doc))
 		}
 	}
 
@@ -184,7 +226,7 @@ func TestMapToStruct(t *testing.T) {
 		)
 
 		for i, doc := range docs {
-			assert.Equal(t, MapToStruct(Person{})(doc), persons[i])
+			assert.Equal(t, persons[i], MapToStruct(Person{})(doc))
 		}
 	}
 
@@ -216,7 +258,7 @@ func TestMapToStruct(t *testing.T) {
 		)
 
 		for i, doc := range docs {
-			assert.Equal(t, MapToStruct(Person{})(doc), persons[i])
+			assert.Equal(t, persons[i], MapToStruct(Person{})(doc))
 		}
 	}
 }

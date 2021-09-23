@@ -181,6 +181,30 @@ func (s Stream) Map(f func(element interface{}) interface{}) Stream {
 	)
 }
 
+// MapIf maps each element that matches the predicate to a new element.
+// Elements that do not match the predicate remain as is.
+// The matching elements should generally not be mapped to a new type, as that would produce different types in the resulting Stream.
+func (s Stream) MapIf(p func(element interface{}) bool, f func(element interface{}) interface{}) Stream {
+	return s.Transform(
+		func(it *iter.Iter) *iter.Iter {
+			return iter.New(
+				func() (interface{}, bool) {
+					if it.Next() {
+						val := it.Value()
+						if p(val) {
+							return f(val), true
+						}
+
+						return val, true
+					}
+
+					return nil, false
+				},
+			)
+		},
+	)
+}
+
 // Peek returns a stream that calls a function that examines each value and performs an additional operation
 func (s Stream) Peek(f func(interface{})) Stream {
 	return s.Transform(
